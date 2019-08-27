@@ -1,7 +1,7 @@
 param(
     [string]$buildType="Debug",
     [string]$dotnetDir="c:\Program Files\dotnet",
-    [string]$msbuildDir="C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin",
+    [string]$msbuildDir="E:\Program Files (x86)\Microsoft Visual Studio\2019\MSBuild\Current\Bin",
     [string]$root=$PSScriptRoot,
     [string]$runTests="YES",
     [string]$failBuildOnTest="YES",

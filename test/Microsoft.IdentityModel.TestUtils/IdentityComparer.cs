@@ -40,11 +40,18 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.IdentityModel.Tokens.Saml;
 using Microsoft.IdentityModel.Tokens.Saml2;
 using Microsoft.IdentityModel.Xml;
+using Microsoft.IdentityModel.WsPolicy;
+using Microsoft.IdentityModel.WsSecurity;
+
 #if !CrossVersionTokenValidation
+using Microsoft.IdentityModel.Protocols.WsPolicy;
+using Microsoft.IdentityModel.WsAddressing;
+using Microsoft.IdentityModel.Protocols.WsFed;
 using System.IdentityModel.Tokens.Jwt;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Protocols.WsFederation;
+using Microsoft.IdentityModel.Protocols.WsTrust;
 #endif
 
 namespace Microsoft.IdentityModel.TestUtils
@@ -158,6 +165,25 @@ namespace Microsoft.IdentityModel.TestUtils
                 { typeof(WsFederationConfiguration).ToString(), CompareAllPublicProperties },
                 { typeof(WsFederationMessage).ToString(), CompareAllPublicProperties },
                 { typeof(Uri).ToString(), AreUrisEqual },
+#if !CrossVersionTokenValidation
+                { typeof(Claims).ToString(), CompareAllPublicProperties },
+                { typeof(List<ClaimType>).ToString(), AreClaimTypeEnumsEqual },
+                { typeof(ClaimType).ToString(), CompareAllPublicProperties },
+                { typeof(EndpointReference).ToString(), CompareAllPublicProperties },
+                { typeof(AdditionalContext).ToString(), CompareAllPublicProperties },
+                { typeof(AppliesTo).ToString(), CompareAllPublicProperties },
+                { typeof(WsTrustResponse).ToString(), CompareAllPublicProperties },
+                { typeof(RequestSecurityTokenResponse).ToString(), CompareAllPublicProperties },
+                { typeof(SecurityTokenReference).ToString(), CompareAllPublicProperties },
+                { typeof(RequestedSecurityToken).ToString(), CompareAllPublicProperties },
+                { typeof(KeyIdentifier).ToString(), CompareAllPublicProperties },
+                { typeof(Lifetime).ToString(), CompareLifetime },
+                { typeof(Entropy).ToString(), CompareAllPublicProperties },
+                { typeof(WsTrustRequest).ToString(), CompareAllPublicProperties },
+                { typeof(PolicyReference).ToString(), CompareAllPublicProperties },
+                { typeof(List<RequestSecurityTokenResponse>).ToString(), AreRequestSecurityTokenResponseEnumsEqual },
+
+#endif
                 { typeof(X509Data).ToString(), CompareAllPublicProperties },
                 { typeof(X509SigningCredentials).ToString(), CompareAllPublicProperties },
             };
@@ -189,6 +215,16 @@ namespace Microsoft.IdentityModel.TestUtils
         {
             return AreEnumsEqual<JsonWebKey>(object1 as IEnumerable<JsonWebKey>, object2 as IEnumerable<JsonWebKey>, context, AreEqual);
         }
+        public static bool AreClaimTypeEnumsEqual(object object1, object object2, CompareContext context)
+        {
+            return AreEnumsEqual<ClaimType>(object1 as IEnumerable<ClaimType>, object2 as IEnumerable<ClaimType>, context, AreEqual);
+        }
+
+        public static bool AreRequestSecurityTokenResponseEnumsEqual(object object1, object object2, CompareContext context)
+        {
+            return AreEnumsEqual<RequestSecurityTokenResponse>(object1 as IEnumerable<RequestSecurityTokenResponse>, object2 as IEnumerable<RequestSecurityTokenResponse>, context, AreEqual);
+        }
+
 #endif
         public static bool AreKeyInfoEnumsEqual(object object1, object object2, CompareContext context)
         {
@@ -963,6 +999,54 @@ namespace Microsoft.IdentityModel.TestUtils
         public static string BuildStringDiff(string label, object str1, object str2)
         {
             return (label ?? "label") + ": '" + GetString(str1) + "', '" + GetString(str2) + "'";
+        }
+
+        public static bool CompareLifetime(object obj1, object obj2, CompareContext context)
+        {
+            var lifetime1 = obj1 as Lifetime;
+            var lifetime2 = obj2 as Lifetime;
+            var localContext = new CompareContext(context);
+
+            if (lifetime1.Created.HasValue != lifetime2.Created.HasValue)
+                localContext.Diffs.Add($"lifetime1.Created.HasValue != lifetime2.Created.HasValue '{lifetime1.Created.HasValue}:{lifetime2.Created.HasValue}'");
+            else
+                CompareDateTime(lifetime1.Created.Value, lifetime2.Created.Value, localContext);
+
+
+            if (lifetime1.Expires.HasValue != lifetime2.Expires.HasValue)
+                localContext.Diffs.Add($"lifetime1.Expires.HasValue != lifetime2.Expires.HasValue '{lifetime1.Expires.HasValue}:{lifetime2.Expires.HasValue}'");
+            else
+                CompareDateTime(lifetime1.Expires.Value, lifetime2.Expires.Value, localContext);
+
+            context.Merge(localContext);
+            return localContext.Diffs.Count == 0;
+        }
+
+        public static void CompareDateTime(DateTime dateTime1, DateTime dateTime2, CompareContext context)
+        {
+            if (dateTime1.Date != dateTime2.Date)
+                context.Diffs.Add($"dateTime1.Date != dateTime2.Date, '{dateTime1.Date}:{dateTime2.Date}'.");
+
+            if (dateTime1.Year != dateTime2.Year)
+                context.Diffs.Add($"dateTime1.Year != dateTime2.Year, '{dateTime1.Year}:{dateTime2.Year}'.");
+
+            if (dateTime1.Month != dateTime2.Month)
+                context.Diffs.Add($"dateTime1.Month != dateTime2.Month, '{dateTime1.Month}:{dateTime2.Month}'.");
+
+            if (dateTime1.Day != dateTime2.Day)
+                context.Diffs.Add($"dateTime1.Day != dateTime2.Day, '{dateTime1.Day}:{dateTime2.Day}'.");
+
+            if (dateTime1.Hour != dateTime2.Hour)
+                context.Diffs.Add($"dateTime1.Hour != dateTime2.Hour, '{dateTime1.Hour}:{dateTime2.Hour}'.");
+
+            if (dateTime1.Minute != dateTime2.Minute)
+                context.Diffs.Add($"dateTime1.Minute != dateTime2.Minute, '{dateTime1.Minute}:{dateTime2.Minute}'.");
+
+            if (dateTime1.Second != dateTime2.Second)
+                context.Diffs.Add($"dateTime1.Second != dateTime2.Second, '{dateTime1.Second}:{dateTime2.Second}'.");
+
+            if (dateTime1.Millisecond != dateTime2.Millisecond)
+                context.Diffs.Add($"dateTime1.Millisecond != dateTime2.Millisecond, '{dateTime1.Millisecond}:{dateTime2.Millisecond}'.");
         }
 
         public static bool CompareAllPublicProperties(object obj1, object obj2, CompareContext context)
