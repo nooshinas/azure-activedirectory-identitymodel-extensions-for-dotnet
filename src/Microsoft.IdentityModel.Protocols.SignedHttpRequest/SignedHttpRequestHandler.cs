@@ -475,10 +475,10 @@ namespace Microsoft.IdentityModel.Protocols.SignedHttpRequest
                     throw LogHelper.LogArgumentNullException(nameof(signedHttpRequestValidationContext));
 
                 // read signed http request as JWT
-                var jwtSignedHttpRequest = _jwtTokenHandler.ReadJsonWebToken(signedHttpRequestValidationContext.SignedHttpRequest);
+                var signedHttpRequest = _jwtTokenHandler.ReadJsonWebToken(signedHttpRequestValidationContext.SignedHttpRequest);
 
                 // read access token ("at")
-                if (!jwtSignedHttpRequest.TryGetPayloadValue(SignedHttpRequestClaimTypes.At, out string accessToken) || string.IsNullOrEmpty(accessToken))
+                if (!signedHttpRequest.TryGetPayloadValue(SignedHttpRequestClaimTypes.At, out string accessToken) || string.IsNullOrEmpty(accessToken))
                     throw LogHelper.LogExceptionMessage(new SignedHttpRequestInvalidAtClaimException(LogHelper.FormatInvariant(LogMessages.IDX23003, SignedHttpRequestClaimTypes.At)));
 
                 // validate access token ("at")
@@ -487,10 +487,10 @@ namespace Microsoft.IdentityModel.Protocols.SignedHttpRequest
                     throw LogHelper.LogExceptionMessage(new SignedHttpRequestInvalidAtClaimException(LogHelper.FormatInvariant(LogMessages.IDX23013, tokenValidationResult.Exception), tokenValidationResult.Exception));
 
                 // resolve PoP keys (confirmation keys)
-                var popKeys = await ResolvePopKeysAsync(jwtSignedHttpRequest, tokenValidationResult.SecurityToken, signedHttpRequestValidationContext, cancellationToken).ConfigureAwait(false);
+                var popKey = await ResolvePopKeyAsync(signedHttpRequest, tokenValidationResult.SecurityToken, signedHttpRequestValidationContext, cancellationToken).ConfigureAwait(false);
 
                 // validate signed http request
-                var validatedSignedHttpRequest = await ValidateSignedHttpRequestAsync(jwtSignedHttpRequest, popKeys, signedHttpRequestValidationContext, cancellationToken).ConfigureAwait(false);
+                var validatedSignedHttpRequest = await ValidateSignedHttpRequestAsync(signedHttpRequest, popKey, signedHttpRequestValidationContext, cancellationToken).ConfigureAwait(false);
 
                 return new SignedHttpRequestValidationResult()
                 {
@@ -498,7 +498,7 @@ namespace Microsoft.IdentityModel.Protocols.SignedHttpRequest
                     AccessToken = accessToken,
                     ClaimsIdentity = tokenValidationResult.ClaimsIdentity,
                     SecurityToken = tokenValidationResult.SecurityToken,
-                    SignedHttpRequest = jwtSignedHttpRequest.EncodedToken,
+                    SignedHttpRequest = signedHttpRequest.EncodedToken,
                     ValidatedSignedHttpRequest = validatedSignedHttpRequest
                 };
             }
@@ -532,26 +532,21 @@ namespace Microsoft.IdentityModel.Protocols.SignedHttpRequest
         /// Validates signed http request.
         /// </summary>
         /// <param name="signedHttpRequest">A SignedHttpRequest.</param>
-        /// <param name="popKeys">A collection of pop keys used to validate signature of the signed http request.</param>
+        /// <param name="popKey">A collection of pop keys used to validate signature of the signed http request.</param>
         /// <param name="signedHttpRequestValidationContext">A structure that wraps parameters needed for SignedHttpRequest validation.</param>
         /// <param name="cancellationToken">Propagates notification that operations should be canceled.</param>
         /// <returns></returns>
         /// <remarks>
         /// The library doesn't provide any caching logic for replay validation purposes.
-        /// <see cref="SignedHttpRequestValidationParameters.SignedHttpRequestReplayValidatorAsync"/> delegate can be utilized for replay validation.
+        /// <see cref="SignedHttpRequestValidationParameters.ReplayValidatorAsync"/> delegate can be utilized for replay validation.
         /// Users can utilize <see cref="SignedHttpRequestValidationParameters.AdditionalClaimValidatorAsync"/> to validate additional signed http request claim(s).
         /// </remarks>
-        private protected virtual async Task<SecurityToken> ValidateSignedHttpRequestAsync(SecurityToken signedHttpRequest, IEnumerable<SecurityKey> popKeys, SignedHttpRequestValidationContext signedHttpRequestValidationContext, CancellationToken cancellationToken)
+        private protected virtual async Task<SecurityToken> ValidateSignedHttpRequestAsync(JsonWebToken signedHttpRequest, SecurityKey popKey, SignedHttpRequestValidationContext signedHttpRequestValidationContext, CancellationToken cancellationToken)
         {
-            if (signedHttpRequestValidationContext.SignedHttpRequestValidationParameters.SignedHttpRequestReplayValidatorAsync != null)
-            {
-                if (signedHttpRequest is JsonWebToken jwtSignedHttpRequest && jwtSignedHttpRequest.TryGetPayloadValue(SignedHttpRequestClaimTypes.Nonce, out string nonce))
-                    await signedHttpRequestValidationContext.SignedHttpRequestValidationParameters.SignedHttpRequestReplayValidatorAsync(nonce, jwtSignedHttpRequest, signedHttpRequestValidationContext, cancellationToken).ConfigureAwait(false);
-                else
-                    await signedHttpRequestValidationContext.SignedHttpRequestValidationParameters.SignedHttpRequestReplayValidatorAsync(string.Empty, signedHttpRequest, signedHttpRequestValidationContext, cancellationToken).ConfigureAwait(false);
-            }
+            if (signedHttpRequestValidationContext.SignedHttpRequestValidationParameters.ReplayValidatorAsync != null)
+                await signedHttpRequestValidationContext.SignedHttpRequestValidationParameters.ReplayValidatorAsync(signedHttpRequest, signedHttpRequestValidationContext, cancellationToken).ConfigureAwait(false);
 
-            signedHttpRequest.SigningKey = await ValidateSignedHttpRequestSignatureAsync(signedHttpRequest, popKeys, signedHttpRequestValidationContext, cancellationToken).ConfigureAwait(false);
+            signedHttpRequest.SigningKey = await ValidateSignatureAsync(signedHttpRequest, popKey, signedHttpRequestValidationContext, cancellationToken).ConfigureAwait(false);
 
             if (signedHttpRequestValidationContext.SignedHttpRequestValidationParameters.ValidateTs)
                 ValidateTsClaim(signedHttpRequest, signedHttpRequestValidationContext);
@@ -581,57 +576,37 @@ namespace Microsoft.IdentityModel.Protocols.SignedHttpRequest
         }
 
         /// <summary>
-        /// Validates the signature of the signed http request using <paramref name="popKeys"/>.
+        /// Validates the signature of the signed http request using <paramref name="popKey"/>.
         /// </summary>
         /// <param name="signedHttpRequest">A SignedHttpRequest.</param>
-        /// <param name="popKeys">A collection of Pop keys used to validate the signed http request signature.</param>
+        /// <param name="popKey">A collection of Pop keys used to validate the signed http request signature.</param>
         /// <param name="signedHttpRequestValidationContext">A structure that wraps parameters needed for SignedHttpRequest validation.</param>
         /// <param name="cancellationToken">Propagates notification that operations should be canceled.</param>
         /// <returns>A PoP <see cref="SecurityKey"/> that validates signature of the <paramref name="signedHttpRequest"/>.</returns>
-        protected virtual async Task<SecurityKey> ValidateSignedHttpRequestSignatureAsync(SecurityToken signedHttpRequest, IEnumerable<SecurityKey> popKeys, SignedHttpRequestValidationContext signedHttpRequestValidationContext, CancellationToken cancellationToken)
+        protected virtual async Task<SecurityKey> ValidateSignatureAsync(JsonWebToken signedHttpRequest, SecurityKey popKey, SignedHttpRequestValidationContext signedHttpRequestValidationContext, CancellationToken cancellationToken)
         {
-            if (signedHttpRequestValidationContext.SignedHttpRequestValidationParameters.SignedHttpRequestSignatureValidatorAsync != null)
-                return await signedHttpRequestValidationContext.SignedHttpRequestValidationParameters.SignedHttpRequestSignatureValidatorAsync(popKeys, signedHttpRequest, signedHttpRequestValidationContext, cancellationToken).ConfigureAwait(false);
+            if (signedHttpRequest == null)
+                throw LogHelper.LogArgumentNullException(nameof(signedHttpRequest));
 
-            if (!(signedHttpRequest is JsonWebToken jwtSignedHttpRequest))
-                throw LogHelper.LogExceptionMessage(new SignedHttpRequestValidationException(LogHelper.FormatInvariant(LogMessages.IDX23031, signedHttpRequest.GetType(), typeof(JsonWebToken), signedHttpRequest)));
+            if (signedHttpRequestValidationContext.SignedHttpRequestValidationParameters.SignatureValidatorAsync != null)
+                return await signedHttpRequestValidationContext.SignedHttpRequestValidationParameters.SignatureValidatorAsync(popKey, signedHttpRequest, signedHttpRequestValidationContext, cancellationToken).ConfigureAwait(false);
 
-            if (popKeys == null || !popKeys.Any())
-                throw LogHelper.LogExceptionMessage(new SignedHttpRequestInvalidSignatureException(LogHelper.FormatInvariant(LogMessages.IDX23030)));
+            if (popKey == null)
+                throw LogHelper.LogArgumentNullException(nameof(popKey));
 
             var exceptionStrings = new StringBuilder();
-            foreach (var popKeyItem in popKeys)
+
+            try
             {
-                SecurityKey popKey = popKeyItem;
-                if (popKeyItem is JsonWebKey popJwk && popJwk.ConvertedSecurityKey != null)
-                    popKey = popJwk.ConvertedSecurityKey;
-
-                try
-                {
-                    var signatureProvider = popKey.CryptoProviderFactory.CreateForVerifying(popKey, jwtSignedHttpRequest.Alg);
-                    if (signatureProvider == null)
-                        throw LogHelper.LogExceptionMessage(new SignedHttpRequestInvalidSignatureException(LogHelper.FormatInvariant(LogMessages.IDX23000, popKey?.ToString() ?? "Null", jwtSignedHttpRequest.Alg)));
-
-                    try
-                    {
-                        var encodedBytes = Encoding.UTF8.GetBytes(jwtSignedHttpRequest.EncodedHeader + "." + jwtSignedHttpRequest.EncodedPayload);
-                        var signature = Base64UrlEncoder.DecodeBytes(jwtSignedHttpRequest.EncodedSignature);
-
-                        if (signatureProvider.Verify(encodedBytes, signature))
-                            return popKey;
-                    }
-                    finally
-                    {
-                        popKey.CryptoProviderFactory.ReleaseSignatureProvider(signatureProvider);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    exceptionStrings.AppendLine(ex.ToString());
-                }
+                if (_jwtTokenHandler.ValidateSignature(Encoding.UTF8.GetBytes(signedHttpRequest.EncodedHeader + "." + signedHttpRequest.EncodedPayload), Base64UrlEncoder.DecodeBytes(signedHttpRequest.EncodedSignature), popKey, signedHttpRequest.Alg, new TokenValidationParameters()))
+                    return popKey;
+            }
+            catch (Exception ex)
+            {
+                throw LogHelper.LogExceptionMessage(new SignedHttpRequestInvalidSignatureException(LogHelper.FormatInvariant(LogMessages.IDX23009, ex.ToString()), ex));
             }
 
-            throw LogHelper.LogExceptionMessage(new SignedHttpRequestInvalidSignatureException(LogHelper.FormatInvariant(LogMessages.IDX23009, exceptionStrings.ToString())));
+            throw LogHelper.LogExceptionMessage(new SignedHttpRequestInvalidSignatureException(LogHelper.FormatInvariant(LogMessages.IDX23035, signedHttpRequest.EncodedHeader + "." + signedHttpRequest.EncodedPayload)));
         }
 
         /// <summary>
@@ -642,15 +617,12 @@ namespace Microsoft.IdentityModel.Protocols.SignedHttpRequest
         /// <remarks>
         /// This method will be executed only if <see cref="SignedHttpRequestValidationParameters.ValidateTs"/> is set to <c>true</c>.
         /// </remarks>    
-        protected virtual void ValidateTsClaim(SecurityToken signedHttpRequest, SignedHttpRequestValidationContext signedHttpRequestValidationContext)
+        protected virtual void ValidateTsClaim(JsonWebToken signedHttpRequest, SignedHttpRequestValidationContext signedHttpRequestValidationContext)
         {
             if (signedHttpRequest == null)
                 throw LogHelper.LogArgumentNullException(nameof(signedHttpRequest));
 
-            if (!(signedHttpRequest is JsonWebToken jwtSignedHttpRequest))
-                throw LogHelper.LogExceptionMessage(new SignedHttpRequestValidationException(LogHelper.FormatInvariant(LogMessages.IDX23031, signedHttpRequest.GetType(), typeof(JsonWebToken), signedHttpRequest)));
-
-            if (!jwtSignedHttpRequest.TryGetPayloadValue(SignedHttpRequestClaimTypes.Ts, out long tsClaimValue))
+            if (!signedHttpRequest.TryGetPayloadValue(SignedHttpRequestClaimTypes.Ts, out long tsClaimValue))
                 throw LogHelper.LogExceptionMessage(new SignedHttpRequestInvalidTsClaimException(LogHelper.FormatInvariant(LogMessages.IDX23003, SignedHttpRequestClaimTypes.Ts)));
 
             DateTime utcNow = DateTime.UtcNow;
@@ -669,8 +641,11 @@ namespace Microsoft.IdentityModel.Protocols.SignedHttpRequest
         /// <remarks>
         /// This method will be executed only if <see cref="SignedHttpRequestValidationParameters.ValidateM"/> is set to <c>true</c>.
         /// </remarks>     
-        protected virtual void ValidateMClaim(SecurityToken signedHttpRequest, SignedHttpRequestValidationContext signedHttpRequestValidationContext)
+        protected virtual void ValidateMClaim(JsonWebToken signedHttpRequest, SignedHttpRequestValidationContext signedHttpRequestValidationContext)
         {
+            if (signedHttpRequest == null)
+                throw LogHelper.LogArgumentNullException(nameof(signedHttpRequest));
+
             var expectedHttpMethod = signedHttpRequestValidationContext.HttpRequestData.Method;
 
             if (signedHttpRequest == null)
@@ -679,10 +654,7 @@ namespace Microsoft.IdentityModel.Protocols.SignedHttpRequest
             if (string.IsNullOrEmpty(expectedHttpMethod))
                 throw LogHelper.LogArgumentNullException(nameof(expectedHttpMethod));
 
-            if (!(signedHttpRequest is JsonWebToken jwtSignedHttpRequest))
-                throw LogHelper.LogExceptionMessage(new SignedHttpRequestValidationException(LogHelper.FormatInvariant(LogMessages.IDX23031, signedHttpRequest.GetType(), typeof(JsonWebToken), signedHttpRequest)));
-
-            if (!jwtSignedHttpRequest.TryGetPayloadValue(SignedHttpRequestClaimTypes.M, out string httpMethod) || httpMethod == null)
+            if (!signedHttpRequest.TryGetPayloadValue(SignedHttpRequestClaimTypes.M, out string httpMethod) || httpMethod == null)
                 throw LogHelper.LogExceptionMessage(new SignedHttpRequestInvalidMClaimException(LogHelper.FormatInvariant(LogMessages.IDX23003, SignedHttpRequestClaimTypes.M)));
 
             // "get " is functionally the same as "GET".
@@ -701,23 +673,19 @@ namespace Microsoft.IdentityModel.Protocols.SignedHttpRequest
         /// <remarks>
         /// This method will be executed only if <see cref="SignedHttpRequestValidationParameters.ValidateU"/> is set to <c>true</c>.
         /// </remarks>     
-        protected virtual void ValidateUClaim(SecurityToken signedHttpRequest, SignedHttpRequestValidationContext signedHttpRequestValidationContext)
+        protected virtual void ValidateUClaim(JsonWebToken signedHttpRequest, SignedHttpRequestValidationContext signedHttpRequestValidationContext)
         {
-            var httpRequestUri = signedHttpRequestValidationContext.HttpRequestData.Uri;
-
             if (signedHttpRequest == null)
                 throw LogHelper.LogArgumentNullException(nameof(signedHttpRequest));
 
+            var httpRequestUri = signedHttpRequestValidationContext.HttpRequestData.Uri;
             if (httpRequestUri == null)
                 throw LogHelper.LogArgumentNullException(nameof(signedHttpRequestValidationContext.HttpRequestData.Uri));
 
             if (!httpRequestUri.IsAbsoluteUri)
                 throw LogHelper.LogExceptionMessage(new SignedHttpRequestInvalidUClaimException(LogHelper.FormatInvariant(LogMessages.IDX23001, httpRequestUri.ToString())));
 
-            if (!(signedHttpRequest is JsonWebToken jwtSignedHttpRequest))
-                throw LogHelper.LogExceptionMessage(new SignedHttpRequestValidationException(LogHelper.FormatInvariant(LogMessages.IDX23031, signedHttpRequest.GetType(), typeof(JsonWebToken), signedHttpRequest)));
-
-            if (!jwtSignedHttpRequest.TryGetPayloadValue(SignedHttpRequestClaimTypes.U, out string uClaimValue) || uClaimValue == null)
+            if (!signedHttpRequest.TryGetPayloadValue(SignedHttpRequestClaimTypes.U, out string uClaimValue) || uClaimValue == null)
                 throw LogHelper.LogExceptionMessage(new SignedHttpRequestInvalidUClaimException(LogHelper.FormatInvariant(LogMessages.IDX23003, SignedHttpRequestClaimTypes.U)));
 
             // https://tools.ietf.org/html/draft-ietf-oauth-signed-http-request-03#section-3.2
@@ -739,7 +707,7 @@ namespace Microsoft.IdentityModel.Protocols.SignedHttpRequest
         /// <remarks>
         /// This method will be executed only if <see cref="SignedHttpRequestValidationParameters.ValidateP"/> is set to <c>true</c>.
         /// </remarks>     
-        protected virtual void ValidatePClaim(SecurityToken signedHttpRequest, SignedHttpRequestValidationContext signedHttpRequestValidationContext)
+        protected virtual void ValidatePClaim(JsonWebToken signedHttpRequest, SignedHttpRequestValidationContext signedHttpRequestValidationContext)
         {
             var httpRequestUri = signedHttpRequestValidationContext.HttpRequestData.Uri;
 
@@ -749,11 +717,8 @@ namespace Microsoft.IdentityModel.Protocols.SignedHttpRequest
             if (httpRequestUri == null)
                 throw LogHelper.LogArgumentNullException(nameof(signedHttpRequestValidationContext.HttpRequestData.Uri));
 
-            if (!(signedHttpRequest is JsonWebToken jwtSignedHttpRequest))
-                throw LogHelper.LogExceptionMessage(new SignedHttpRequestValidationException(LogHelper.FormatInvariant(LogMessages.IDX23031, signedHttpRequest.GetType(), typeof(JsonWebToken), signedHttpRequest)));
-
             httpRequestUri = EnsureAbsoluteUri(httpRequestUri);
-            if (!jwtSignedHttpRequest.TryGetPayloadValue(SignedHttpRequestClaimTypes.P, out string pClaimValue) || pClaimValue == null)
+            if (!signedHttpRequest.TryGetPayloadValue(SignedHttpRequestClaimTypes.P, out string pClaimValue) || pClaimValue == null)
                 throw LogHelper.LogExceptionMessage(new SignedHttpRequestInvalidPClaimException(LogHelper.FormatInvariant(LogMessages.IDX23003, SignedHttpRequestClaimTypes.P)));
 
             // relax comparison by trimming start and ending forward slashes
@@ -772,7 +737,7 @@ namespace Microsoft.IdentityModel.Protocols.SignedHttpRequest
         /// <remarks>
         /// This method will be executed only if <see cref="SignedHttpRequestValidationParameters.ValidateQ"/> is set to <c>true</c>.
         /// </remarks>     
-        protected virtual void ValidateQClaim(SecurityToken signedHttpRequest, SignedHttpRequestValidationContext signedHttpRequestValidationContext)
+        protected virtual void ValidateQClaim(JsonWebToken signedHttpRequest, SignedHttpRequestValidationContext signedHttpRequestValidationContext)
         {
             var httpRequestUri = signedHttpRequestValidationContext.HttpRequestData.Uri;
 
@@ -782,10 +747,7 @@ namespace Microsoft.IdentityModel.Protocols.SignedHttpRequest
             if (httpRequestUri == null)
                 throw LogHelper.LogArgumentNullException(nameof(httpRequestUri));
 
-            if (!(signedHttpRequest is JsonWebToken jwtSignedHttpRequest))
-                throw LogHelper.LogExceptionMessage(new SignedHttpRequestValidationException(LogHelper.FormatInvariant(LogMessages.IDX23031, signedHttpRequest.GetType(), typeof(JsonWebToken), signedHttpRequest)));
-
-            if (!jwtSignedHttpRequest.TryGetPayloadValue(SignedHttpRequestClaimTypes.Q, out JArray qClaim) || qClaim == null)
+            if (!signedHttpRequest.TryGetPayloadValue(SignedHttpRequestClaimTypes.Q, out JArray qClaim) || qClaim == null)
                 throw LogHelper.LogExceptionMessage(new SignedHttpRequestInvalidQClaimException(LogHelper.FormatInvariant(LogMessages.IDX23003, SignedHttpRequestClaimTypes.Q)));
 
             httpRequestUri = EnsureAbsoluteUri(httpRequestUri);
@@ -851,7 +813,7 @@ namespace Microsoft.IdentityModel.Protocols.SignedHttpRequest
         /// <remarks>
         /// This method will be executed only if <see cref="SignedHttpRequestValidationParameters.ValidateH"/> is set to <c>true</c>.
         /// </remarks>     
-        protected virtual void ValidateHClaim(SecurityToken signedHttpRequest, SignedHttpRequestValidationContext signedHttpRequestValidationContext)
+        protected virtual void ValidateHClaim(JsonWebToken signedHttpRequest, SignedHttpRequestValidationContext signedHttpRequestValidationContext)
         {
             var httpRequestHeaders = signedHttpRequestValidationContext.HttpRequestData.Headers;
 
@@ -861,10 +823,7 @@ namespace Microsoft.IdentityModel.Protocols.SignedHttpRequest
             if (httpRequestHeaders == null)
                 throw LogHelper.LogArgumentNullException(nameof(httpRequestHeaders));
 
-            if (!(signedHttpRequest is JsonWebToken jwtSignedHttpRequest))
-                throw LogHelper.LogExceptionMessage(new SignedHttpRequestValidationException(LogHelper.FormatInvariant(LogMessages.IDX23031, signedHttpRequest.GetType(), typeof(JsonWebToken), signedHttpRequest)));
-
-            if (!jwtSignedHttpRequest.TryGetPayloadValue(SignedHttpRequestClaimTypes.H, out JArray hClaim) || hClaim == null)
+            if (!signedHttpRequest.TryGetPayloadValue(SignedHttpRequestClaimTypes.H, out JArray hClaim) || hClaim == null)
                 throw LogHelper.LogExceptionMessage(new SignedHttpRequestInvalidHClaimException(LogHelper.FormatInvariant(LogMessages.IDX23003, SignedHttpRequestClaimTypes.H)));
 
             var sanitizedHeaders = SanitizeHeaders(httpRequestHeaders);
@@ -928,7 +887,7 @@ namespace Microsoft.IdentityModel.Protocols.SignedHttpRequest
         /// <remarks>
         /// This method will be executed only if <see cref="SignedHttpRequestValidationParameters.ValidateB"/> is set to <c>true</c>.
         /// </remarks>     
-        protected virtual void ValidateBClaim(SecurityToken signedHttpRequest, SignedHttpRequestValidationContext signedHttpRequestValidationContext)
+        protected virtual void ValidateBClaim(JsonWebToken signedHttpRequest, SignedHttpRequestValidationContext signedHttpRequestValidationContext)
         {
             var httpRequestBody = signedHttpRequestValidationContext.HttpRequestData.Body;
 
@@ -938,10 +897,7 @@ namespace Microsoft.IdentityModel.Protocols.SignedHttpRequest
             if (httpRequestBody == null)
                 httpRequestBody = new byte[0];
 
-            if (!(signedHttpRequest is JsonWebToken jwtSignedHttpRequest))
-                throw LogHelper.LogExceptionMessage(new SignedHttpRequestValidationException(LogHelper.FormatInvariant(LogMessages.IDX23031, signedHttpRequest.GetType(), typeof(JsonWebToken), signedHttpRequest)));
-
-            if (!jwtSignedHttpRequest.TryGetPayloadValue(SignedHttpRequestClaimTypes.B, out string bClaim) || bClaim == null)
+            if (!signedHttpRequest.TryGetPayloadValue(SignedHttpRequestClaimTypes.B, out string bClaim) || bClaim == null)
                 throw LogHelper.LogExceptionMessage(new SignedHttpRequestInvalidBClaimException(LogHelper.FormatInvariant(LogMessages.IDX23003, SignedHttpRequestClaimTypes.B)));
 
             string expectedBase64UrlEncodedHash;
@@ -968,17 +924,16 @@ namespace Microsoft.IdentityModel.Protocols.SignedHttpRequest
         /// <param name="signedHttpRequestValidationContext">A structure that wraps parameters needed for SignedHttpRequest validation.</param>
         /// <param name="cancellationToken">Propagates notification that operations should be canceled.</param>
         /// <returns>A resolved PoP <see cref="SecurityKey"/>.</returns>
-        protected virtual async Task<IEnumerable<SecurityKey>> ResolvePopKeysAsync(SecurityToken signedHttpRequest, SecurityToken validatedAccessToken, SignedHttpRequestValidationContext signedHttpRequestValidationContext, CancellationToken cancellationToken)
+        protected virtual async Task<SecurityKey> ResolvePopKeyAsync(JsonWebToken signedHttpRequest, SecurityToken validatedAccessToken, SignedHttpRequestValidationContext signedHttpRequestValidationContext, CancellationToken cancellationToken)
         {
             if (signedHttpRequestValidationContext == null)
                 throw LogHelper.LogArgumentNullException(nameof(signedHttpRequestValidationContext));
 
-            if (signedHttpRequestValidationContext.SignedHttpRequestValidationParameters.PopKeysResolverAsync != null)
-                return await signedHttpRequestValidationContext.SignedHttpRequestValidationParameters.PopKeysResolverAsync(signedHttpRequest, validatedAccessToken, signedHttpRequestValidationContext, cancellationToken).ConfigureAwait(false);
+            if (signedHttpRequestValidationContext.SignedHttpRequestValidationParameters.PopKeyResolverAsync != null)
+                return await signedHttpRequestValidationContext.SignedHttpRequestValidationParameters.PopKeyResolverAsync(signedHttpRequest, validatedAccessToken, signedHttpRequestValidationContext, cancellationToken).ConfigureAwait(false);
 
             var cnf = GetCnfClaimValue(signedHttpRequest, validatedAccessToken, signedHttpRequestValidationContext);
-            var popKey = await ResolvePopKeyFromCnfClaimAsync(cnf, signedHttpRequest, validatedAccessToken, signedHttpRequestValidationContext, cancellationToken).ConfigureAwait(false);
-            return new List<SecurityKey>() { popKey };
+            return await ResolvePopKeyFromCnfClaimAsync(cnf, signedHttpRequest, validatedAccessToken, signedHttpRequestValidationContext, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -989,7 +944,7 @@ namespace Microsoft.IdentityModel.Protocols.SignedHttpRequest
         /// <param name="validatedAccessToken">An access token ("at") that was already validated during the SignedHttpRequest validation process.</param>
         /// <param name="signedHttpRequestValidationContext">A structure that wraps parameters needed for SignedHttpRequest validation.</param>
         /// <returns>JSON representation of the 'cnf' claim.</returns>
-        protected virtual string GetCnfClaimValue(SecurityToken signedHttpRequest, SecurityToken validatedAccessToken, SignedHttpRequestValidationContext signedHttpRequestValidationContext)
+        protected virtual string GetCnfClaimValue(JsonWebToken signedHttpRequest, SecurityToken validatedAccessToken, SignedHttpRequestValidationContext signedHttpRequestValidationContext)
         {
             if (validatedAccessToken == null)
                 throw LogHelper.LogArgumentNullException(nameof(validatedAccessToken));
@@ -998,11 +953,12 @@ namespace Microsoft.IdentityModel.Protocols.SignedHttpRequest
                 throw LogHelper.LogExceptionMessage(new SignedHttpRequestValidationException(LogHelper.FormatInvariant(LogMessages.IDX23031, validatedAccessToken.GetType(), typeof(JsonWebToken), validatedAccessToken)));
 
             // use the decrypted jwt if the jwtValidatedAccessToken is encrypted.
+            // [brentsch] - does this always imply that this is a jwe
             if (jwtValidatedAccessToken.InnerToken != null)
                 jwtValidatedAccessToken = jwtValidatedAccessToken.InnerToken;
 
             if (jwtValidatedAccessToken.TryGetPayloadValue(ConfirmationClaimTypes.Cnf, out JObject cnf) && cnf != null)
-                return cnf.ToString();
+                return cnf.ToString(Formatting.None);
             else
                 throw LogHelper.LogExceptionMessage(new SignedHttpRequestInvalidCnfClaimException(LogHelper.FormatInvariant(LogMessages.IDX23003, ConfirmationClaimTypes.Cnf)));
         }
@@ -1017,31 +973,20 @@ namespace Microsoft.IdentityModel.Protocols.SignedHttpRequest
         /// <param name="cancellationToken">Propagates notification that operations should be canceled.</param>
         /// <returns>A resolved PoP <see cref="SecurityKey"/>.</returns>
         /// <remarks>https://tools.ietf.org/html/rfc7800#section-3.1</remarks>
-        protected virtual async Task<SecurityKey> ResolvePopKeyFromCnfClaimAsync(string confirmationClaim, SecurityToken signedHttpRequest, SecurityToken validatedAccessToken, SignedHttpRequestValidationContext signedHttpRequestValidationContext, CancellationToken cancellationToken)
+        protected virtual async Task<SecurityKey> ResolvePopKeyFromCnfClaimAsync(string confirmationClaim, JsonWebToken signedHttpRequest, SecurityToken validatedAccessToken, SignedHttpRequestValidationContext signedHttpRequestValidationContext, CancellationToken cancellationToken)
         {
             if (string.IsNullOrEmpty(confirmationClaim))
                 throw LogHelper.LogArgumentNullException(nameof(confirmationClaim));
 
             var cnf = JObject.Parse(confirmationClaim);
             if (cnf.TryGetValue(ConfirmationClaimTypes.Jwk, StringComparison.Ordinal, out var jwk))
-            {
                 return ResolvePopKeyFromJwk(jwk.ToString(), signedHttpRequest, validatedAccessToken, signedHttpRequestValidationContext);
-            }
             else if (cnf.TryGetValue(ConfirmationClaimTypes.Jwe, StringComparison.Ordinal, out var jwe))
-            {
                 return await ResolvePopKeyFromJweAsync(jwe.ToString(), signedHttpRequest, validatedAccessToken, signedHttpRequestValidationContext, cancellationToken).ConfigureAwait(false);
-            }
-            else if (cnf.TryGetValue(ConfirmationClaimTypes.Jku, StringComparison.Ordinal, out var jku))
-            {
-                if (cnf.TryGetValue(ConfirmationClaimTypes.Kid, StringComparison.Ordinal, out var kid))
-                    return await ResolvePopKeyFromJkuAsync(jku.ToString(), kid.ToString(), signedHttpRequest, validatedAccessToken, signedHttpRequestValidationContext, cancellationToken).ConfigureAwait(false);
-                else
-                    return await ResolvePopKeyFromJkuAsync(jku.ToString(), signedHttpRequest, validatedAccessToken, signedHttpRequestValidationContext, cancellationToken).ConfigureAwait(false);
-            }
             else if (cnf.TryGetValue(ConfirmationClaimTypes.Kid, StringComparison.Ordinal, out var kid))
-            {
                 return await ResolvePopKeyFromKeyIdentifierAsync(kid.ToString(), signedHttpRequest, validatedAccessToken, signedHttpRequestValidationContext, cancellationToken).ConfigureAwait(false);
-            }
+            else if (cnf.TryGetValue(ConfirmationClaimTypes.Jku, StringComparison.Ordinal, out var jku))
+                return await ResolvePopKeyFromJkuAsync(jku.ToString(), signedHttpRequest, validatedAccessToken, signedHttpRequestValidationContext, cancellationToken).ConfigureAwait(false);
             else
                 throw LogHelper.LogExceptionMessage(new SignedHttpRequestInvalidCnfClaimException(LogHelper.FormatInvariant(LogMessages.IDX23014, cnf.ToString())));
         }
@@ -1054,7 +999,7 @@ namespace Microsoft.IdentityModel.Protocols.SignedHttpRequest
         /// <param name="validatedAccessToken">An access token ("at") that was already validated during the SignedHttpRequest validation process.</param>
         /// <param name="signedHttpRequestValidationContext">A structure that wraps parameters needed for SignedHttpRequest validation.</param>
         /// <returns>A resolved PoP <see cref="SecurityKey"/>.</returns>
-        protected virtual SecurityKey ResolvePopKeyFromJwk(string jwk, SecurityToken signedHttpRequest, SecurityToken validatedAccessToken, SignedHttpRequestValidationContext signedHttpRequestValidationContext)
+        protected virtual SecurityKey ResolvePopKeyFromJwk(string jwk, JsonWebToken signedHttpRequest, SecurityToken validatedAccessToken, SignedHttpRequestValidationContext signedHttpRequestValidationContext)
         {
             if (string.IsNullOrEmpty(jwk))
                 throw LogHelper.LogArgumentNullException(nameof(jwk));
@@ -1081,7 +1026,7 @@ namespace Microsoft.IdentityModel.Protocols.SignedHttpRequest
         /// <param name="signedHttpRequestValidationContext">A structure that wraps parameters needed for SignedHttpRequest validation.</param>
         /// <param name="cancellationToken">Propagates notification that operations should be canceled.</param>
         /// <returns>A resolved PoP <see cref="SecurityKey"/>.</returns>
-        protected virtual async Task<SecurityKey> ResolvePopKeyFromJweAsync(string jwe, SecurityToken signedHttpRequest, SecurityToken validatedAccessToken, SignedHttpRequestValidationContext signedHttpRequestValidationContext, CancellationToken cancellationToken)
+        protected virtual async Task<SecurityKey> ResolvePopKeyFromJweAsync(string jwe, JsonWebToken signedHttpRequest, SecurityToken validatedAccessToken, SignedHttpRequestValidationContext signedHttpRequestValidationContext, CancellationToken cancellationToken)
         {
             if (string.IsNullOrEmpty(jwe))
                 throw LogHelper.LogArgumentNullException(nameof(jwe));
@@ -1128,82 +1073,61 @@ namespace Microsoft.IdentityModel.Protocols.SignedHttpRequest
         /// Resolves a PoP <see cref="SecurityKey"/> from the URL reference to a PoP JWK set.
         /// The method throws an exception is there is more than one resolved PoP key.
         /// </summary>
-        /// <param name="jkuSetUrl">A URL reference to a PoP JWK set.</param>
+        /// <param name="jku">A URL reference to a PoP JWK set.</param>
         /// <param name="signedHttpRequest">A signed http request as a JWT.</param>
         /// <param name="validatedAccessToken">An access token ("at") that was already validated during the SignedHttpRequest validation process.</param> 
         /// <param name="signedHttpRequestValidationContext">A structure that wraps parameters needed for SignedHttpRequest validation.</param>
         /// <param name="cancellationToken">Propagates notification that operations should be canceled.</param>
         /// <returns>A resolved PoP <see cref="SecurityKey"/>.</returns>
-        protected virtual async Task<SecurityKey> ResolvePopKeyFromJkuAsync(string jkuSetUrl, SecurityToken signedHttpRequest, SecurityToken validatedAccessToken, SignedHttpRequestValidationContext signedHttpRequestValidationContext, CancellationToken cancellationToken)
+        protected virtual async Task<SecurityKey> ResolvePopKeyFromJkuAsync(string jku, JsonWebToken signedHttpRequest, SecurityToken validatedAccessToken, SignedHttpRequestValidationContext signedHttpRequestValidationContext, CancellationToken cancellationToken)
         {
-            var popKeys = await GetPopKeysFromJkuAsync(jkuSetUrl, signedHttpRequest, validatedAccessToken, signedHttpRequestValidationContext, cancellationToken).ConfigureAwait(false);
-            var popKeyCount = popKeys != null ? popKeys.Count : 0;
-
-            if (popKeyCount == 0)
-                throw LogHelper.LogExceptionMessage(new SignedHttpRequestInvalidPopKeyException(LogHelper.FormatInvariant(LogMessages.IDX23020, popKeyCount.ToString())));
-            else if (popKeyCount > 1)
-                throw LogHelper.LogExceptionMessage(new SignedHttpRequestInvalidPopKeyException(LogHelper.FormatInvariant(LogMessages.IDX23020, popKeyCount.ToString())));
-            else
-                return popKeys[0];
+            return await GetPopKeyFromJkuAsync(jku, signedHttpRequest, validatedAccessToken, signedHttpRequestValidationContext, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
         /// Resolves a PoP <see cref="SecurityKey"/> from the URL reference to a PoP key.  
         /// </summary>
-        /// <param name="jkuSetUrl">A URL reference to a PoP JWK set.</param>
+        /// <param name="jku">A URL reference to a PoP JWK set.</param>
         /// <param name="kid">A PoP key identifier.</param>
         /// <param name="signedHttpRequest">A signed http request as a JWT.</param>
         /// <param name="validatedAccessToken">An access token ("at") that was already validated during the SignedHttpRequest validation process.</param> 
         /// <param name="signedHttpRequestValidationContext">A structure that wraps parameters needed for SignedHttpRequest validation.</param>
         /// <param name="cancellationToken">Propagates notification that operations should be canceled.</param>
         /// <returns>A resolved PoP <see cref="SecurityKey"/>.</returns>
-        protected virtual async Task<SecurityKey> ResolvePopKeyFromJkuAsync(string jkuSetUrl, string kid, SecurityToken signedHttpRequest, SecurityToken validatedAccessToken, SignedHttpRequestValidationContext signedHttpRequestValidationContext, CancellationToken cancellationToken)
+        protected virtual async Task<SecurityKey> ResolvePopKeyFromJkuAsync(string jku, string kid, JsonWebToken signedHttpRequest, SecurityToken validatedAccessToken, SignedHttpRequestValidationContext signedHttpRequestValidationContext, CancellationToken cancellationToken)
         {
             if (string.IsNullOrEmpty(kid))
                 throw LogHelper.LogArgumentNullException(nameof(kid));
 
-            var popKeys = await GetPopKeysFromJkuAsync(jkuSetUrl, signedHttpRequest, validatedAccessToken, signedHttpRequestValidationContext, cancellationToken).ConfigureAwait(false);
-
-            if (popKeys == null)
-                throw LogHelper.LogExceptionMessage(new SignedHttpRequestInvalidPopKeyException(LogHelper.FormatInvariant(LogMessages.IDX23032)));
-
-            foreach (var key in popKeys)
-            {
-                if (string.Equals(key.KeyId, kid.ToString(), StringComparison.Ordinal))
-                    return key;
-            }
-
-            throw LogHelper.LogExceptionMessage(new SignedHttpRequestInvalidPopKeyException(LogHelper.FormatInvariant(LogMessages.IDX23021, kid, string.Join(", ", popKeys.Select(x => x.KeyId ?? "Null")))));
+            return  await GetPopKeyFromJkuAsync(jku, signedHttpRequest, validatedAccessToken, signedHttpRequestValidationContext, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
-        /// Gets a JWK set of PoP <see cref="SecurityKey"/> from the <paramref name="jkuSetUrl"/>.
+        /// Gets a JWK set of PoP <see cref="SecurityKey"/> from the <paramref name="jku"/>.
         /// </summary>
-        /// <param name="jkuSetUrl">A URL reference to a PoP JWK set.</param>
+        /// <param name="jku">A URL reference to a PoP JWK set.</param>
         /// <param name="signedHttpRequest">A signed http request as a JWT.</param>
         /// <param name="validatedAccessToken">An access token ("at") that was already validated during the SignedHttpRequest validation process.</param> 
         /// <param name="signedHttpRequestValidationContext">A structure that wraps parameters needed for SignedHttpRequest validation.</param>
         /// <param name="cancellationToken">Propagates notification that operations should be canceled.</param>
         /// <returns>A collection of PoP <see cref="SecurityKey"/>.</returns>
-        protected virtual async Task<IList<SecurityKey>> GetPopKeysFromJkuAsync(string jkuSetUrl, SecurityToken signedHttpRequest, SecurityToken validatedAccessToken, SignedHttpRequestValidationContext signedHttpRequestValidationContext, CancellationToken cancellationToken)
+        protected virtual async Task<SecurityKey> GetPopKeyFromJkuAsync(string jku, JsonWebToken signedHttpRequest, SecurityToken validatedAccessToken, SignedHttpRequestValidationContext signedHttpRequestValidationContext, CancellationToken cancellationToken)
         {
-            if (string.IsNullOrEmpty(jkuSetUrl))
-                throw LogHelper.LogArgumentNullException(nameof(jkuSetUrl));
+            if (string.IsNullOrEmpty(jku))
+                throw LogHelper.LogArgumentNullException(nameof(jku));
 
-            if (!Utility.IsHttps(jkuSetUrl) && signedHttpRequestValidationContext.SignedHttpRequestValidationParameters.RequireHttpsForJkuResourceRetrieval)
-                throw LogHelper.LogExceptionMessage(new SignedHttpRequestInvalidPopKeyException(LogHelper.FormatInvariant(LogMessages.IDX23006, jkuSetUrl)));
+            if (!Utility.IsHttps(jku) && signedHttpRequestValidationContext.SignedHttpRequestValidationParameters.RequireHttpsForJkuResourceRetrieval)
+                throw LogHelper.LogExceptionMessage(new SignedHttpRequestInvalidPopKeyException(LogHelper.FormatInvariant(LogMessages.IDX23006, jku)));
 
             try
             {
                 var httpClient = signedHttpRequestValidationContext.SignedHttpRequestValidationParameters.HttpClientForJkuResourceRetrieval ?? _defaultHttpClient;
-                var response = await httpClient.GetAsync(jkuSetUrl, cancellationToken).ConfigureAwait(false);
-                var jsonWebKey = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                var jsonWebKeySet = new JsonWebKeySet(jsonWebKey);
-                return jsonWebKeySet.Keys.Cast<SecurityKey>().ToList();
+                var response = await httpClient.GetAsync(jku, cancellationToken).ConfigureAwait(false);
+                return new JsonWebKey(await response.Content.ReadAsStringAsync().ConfigureAwait(false));
             }
             catch (Exception e)
             {
-                throw LogHelper.LogExceptionMessage(new SignedHttpRequestInvalidPopKeyException(LogHelper.FormatInvariant(LogMessages.IDX23022, jkuSetUrl, e), e));
+                throw LogHelper.LogExceptionMessage(new SignedHttpRequestInvalidPopKeyException(LogHelper.FormatInvariant(LogMessages.IDX23022, jku, e), e));
             }
         }
 
@@ -1217,12 +1141,12 @@ namespace Microsoft.IdentityModel.Protocols.SignedHttpRequest
         /// <param name="cancellationToken">Propagates notification that operations should be canceled.</param>
         /// <returns>A resolved PoP <see cref="SecurityKey"/>.</returns>
         /// <remarks>
-        /// To resolve a PoP <see cref="SecurityKey"/> using only the 'kid' claim, set the <see cref="SignedHttpRequestValidationParameters.PopKeyResolverFromKeyIdAsync"/> delegate.
+        /// To resolve a PoP <see cref="SecurityKey"/> using only the 'kid' claim, set the <see cref="SignedHttpRequestValidationParameters.PopKeyResolverAsync"/> delegate.
         /// </remarks>
-        protected virtual async Task<SecurityKey> ResolvePopKeyFromKeyIdentifierAsync(string kid, SecurityToken signedHttpRequest, SecurityToken validatedAccessToken, SignedHttpRequestValidationContext signedHttpRequestValidationContext, CancellationToken cancellationToken)
+        protected virtual async Task<SecurityKey> ResolvePopKeyFromKeyIdentifierAsync(string kid, JsonWebToken signedHttpRequest, SecurityToken validatedAccessToken, SignedHttpRequestValidationContext signedHttpRequestValidationContext, CancellationToken cancellationToken)
         {
-            if (signedHttpRequestValidationContext.SignedHttpRequestValidationParameters.PopKeyResolverFromKeyIdAsync != null)
-                return await signedHttpRequestValidationContext.SignedHttpRequestValidationParameters.PopKeyResolverFromKeyIdAsync(kid, validatedAccessToken, signedHttpRequestValidationContext, cancellationToken).ConfigureAwait(false);
+            if (signedHttpRequestValidationContext.SignedHttpRequestValidationParameters.PopKeyResolverAsync != null)
+                return await signedHttpRequestValidationContext.SignedHttpRequestValidationParameters.PopKeyResolverAsync(signedHttpRequest, validatedAccessToken, signedHttpRequestValidationContext, cancellationToken).ConfigureAwait(false);
             else if (signedHttpRequest is JsonWebToken jwtSignedHttpRequest && jwtSignedHttpRequest.TryGetPayloadValue(ConfirmationClaimTypes.Cnf, out JObject signedHttpRequestCnf) && signedHttpRequestCnf != null)
                 return await ResolvePopKeyFromCnfReferenceAsync(kid, signedHttpRequestCnf.ToString(Formatting.None), signedHttpRequest, validatedAccessToken, signedHttpRequestValidationContext, cancellationToken).ConfigureAwait(false);
             else
@@ -1240,7 +1164,7 @@ namespace Microsoft.IdentityModel.Protocols.SignedHttpRequest
         /// <param name="cancellationToken">Propagates notification that operations should be canceled.</param>
         /// <returns>A resolved PoP <see cref="SecurityKey"/>.</returns>
         /// <remarks><paramref name="cnfReferenceId"/> MUST match the base64url-encoded thumbprint of a JWK resolved from the <paramref name="confirmationClaim"/>.</remarks>
-        protected virtual async Task<SecurityKey> ResolvePopKeyFromCnfReferenceAsync(string cnfReferenceId, string confirmationClaim, SecurityToken signedHttpRequest, SecurityToken validatedAccessToken, SignedHttpRequestValidationContext signedHttpRequestValidationContext, CancellationToken cancellationToken)
+        protected virtual async Task<SecurityKey> ResolvePopKeyFromCnfReferenceAsync(string cnfReferenceId, string confirmationClaim, JsonWebToken signedHttpRequest, SecurityToken validatedAccessToken, SignedHttpRequestValidationContext signedHttpRequestValidationContext, CancellationToken cancellationToken)
         {
             // resolve PoP key from the confirmation claim, but set signedHttpRequest to null to prevent recursion.
             var popKey = await ResolvePopKeyFromCnfClaimAsync(confirmationClaim, null, validatedAccessToken, signedHttpRequestValidationContext, cancellationToken).ConfigureAwait(false);

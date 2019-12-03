@@ -206,7 +206,7 @@ namespace Microsoft.IdentityModel.Protocols.SignedHttpRequest.Tests
                         },
                         SignedHttpRequestValidationParameters = new SignedHttpRequestValidationParameters()
                         {
-                            PopKeysResolverAsync = async (SecurityToken signedHttpRequest, SecurityToken validatedAccessToken, SignedHttpRequestValidationContext signedHttpRequestValidationContext, CancellationToken cancellationToken) =>
+                            PopKeyResolverAsync = async (SecurityToken signedHttpRequest, SecurityToken validatedAccessToken, SignedHttpRequestValidationContext signedHttpRequestValidationContext, CancellationToken cancellationToken) =>
                             {
                                 signedHttpRequestValidationContext.CallContext.PropertyBag["trackPopKeyResolver"] = true;
                                 return await Task.FromResult<IEnumerable<SecurityKey>>(null);
@@ -528,7 +528,7 @@ namespace Microsoft.IdentityModel.Protocols.SignedHttpRequest.Tests
                     },
                     new ResolvePopKeyTheoryData
                     {
-                        ValidatedAccessToken = new JwtSecurityToken(SignedHttpRequestTestUtils.CreateAt(null, false)),
+                        ValidatedAccessToken = new JsonWebToken(SignedHttpRequestTestUtils.CreateAt(null, false)),
                         ExpectedException = new ExpectedException(typeof(SignedHttpRequestValidationException), "IDX23031"),
                         TestId = "InvalidNullAccessToken",
                     },
@@ -810,7 +810,7 @@ namespace Microsoft.IdentityModel.Protocols.SignedHttpRequest.Tests
                     {
                         SignedHttpRequestValidationParameters = new SignedHttpRequestValidationParameters()
                         {
-                            PopKeyResolverFromKeyIdAsync = (string kid, SecurityToken validatedAccessToken, SignedHttpRequestValidationContext signedHttpRequestValidationContext, CancellationToken cancellationToken) =>
+                            PopKeyResolverAsync = (JsonWebToken signedHttpRequest, SecurityToken validatedAccessToken, SignedHttpRequestValidationContext signedHttpRequestValidationContext, CancellationToken cancellationToken) =>
                             {
                                 throw new NotImplementedException();
                             }
@@ -822,7 +822,7 @@ namespace Microsoft.IdentityModel.Protocols.SignedHttpRequest.Tests
                     {
                         SignedHttpRequestValidationParameters = new SignedHttpRequestValidationParameters()
                         {
-                            PopKeyResolverFromKeyIdAsync = async (string kid, SecurityToken validatedAccessToken, SignedHttpRequestValidationContext signedHttpRequestValidationContext, CancellationToken cancellationToken) =>
+                            PopKeyResolverAsync = async (JsonWebToken signedHttpRequest, SecurityToken validatedAccessToken, SignedHttpRequestValidationContext signedHttpRequestValidationContext, CancellationToken cancellationToken) =>
                             {
                                 return await Task.FromResult(SignedHttpRequestTestUtils.DefaultSigningCredentials.Key);
                             }
