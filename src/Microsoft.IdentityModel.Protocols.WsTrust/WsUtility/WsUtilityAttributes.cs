@@ -27,7 +27,7 @@
 
 #pragma warning disable 1591
 
-namespace Microsoft.IdentityModel.Protocols
+namespace Microsoft.IdentityModel.Protocols.WsUtility
 {
     public static class WsUtilityAttributes
     {

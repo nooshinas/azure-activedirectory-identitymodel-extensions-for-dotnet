@@ -25,9 +25,9 @@
 //
 //------------------------------------------------------------------------------
 
-using Microsoft.IdentityModel.WsAddressing;
-using Microsoft.IdentityModel.WsPolicy;
-using Microsoft.IdentityModel.WsSecurity;
+using Microsoft.IdentityModel.Protocols.WsAddressing;
+using Microsoft.IdentityModel.Protocols.WsPolicy;
+using Microsoft.IdentityModel.Protocols.WsSecurity;
 
 #pragma warning disable CS3016 // Arrays as attribute arguments is not CLS-compliant
 

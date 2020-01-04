@@ -28,7 +28,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using Microsoft.IdentityModel.Logging;
-using Microsoft.IdentityModel.WsAddressing;
+using Microsoft.IdentityModel.Protocols.WsAddressing;
 
 namespace Microsoft.IdentityModel.Protocols.WsTrust
 {

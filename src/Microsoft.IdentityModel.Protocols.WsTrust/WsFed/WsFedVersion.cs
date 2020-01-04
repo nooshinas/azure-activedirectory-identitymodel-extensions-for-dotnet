@@ -1,4 +1,4 @@
-﻿//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 //
 // Copyright (c) Microsoft Corporation.
 // All rights reserved.
@@ -25,45 +25,20 @@
 //
 //------------------------------------------------------------------------------
 
-using System;
-using System.Collections.Generic;
-using System.Xml;
-using Microsoft.IdentityModel.Logging;
-using Microsoft.IdentityModel.Protocols.WsTrust;
-using Microsoft.IdentityModel.Xml;
+#pragma warning disable 1591
 
 namespace Microsoft.IdentityModel.Protocols.WsFed
 {
     /// <summary>
-    /// Defines the auth:AdditionalContext element.
+    /// Classes for specifying WS-Fed 1.2.
     /// </summary>
-    public class AdditionalContext
+    public abstract class WsFedVersion
     {
-        /// <summary>
-        /// 
-        /// </summary>
-        public AdditionalContext()
-        {
-            Items = new List<ContextItem>();
-        }
-
-        /// <summary>
-        /// Initializes an instance of <see cref="AdditionalContext"/>
-        /// </summary>
-        /// <param name="items">Collection of <see cref="ContextItem"/>.</param>
-        /// <exception cref="ArgumentNullException"> <paramref name="items"/> is null.</exception>
-        public AdditionalContext(IList<ContextItem> items)
-        {
-            Items = items ?? throw LogHelper.LogArgumentNullException(nameof(items));
-        }
-
-        /// <summary>
-        /// Gets the Collection of items.
-        /// </summary>
-        public IList<ContextItem> Items
-        {
-            get; set;
-        }
-
+        public static WsFedVersion Fed12 = new WsFed12Version();
     }
+
+    /// <summary>
+    /// Class for specifying WS-Addressing 10.
+    /// </summary>
+    internal class WsFed12Version : WsFedVersion { }
 }

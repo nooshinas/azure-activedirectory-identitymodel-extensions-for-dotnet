@@ -32,7 +32,7 @@ using System.Xml;
 using Microsoft.IdentityModel.Logging;
 
 #pragma warning disable 1591
-namespace Microsoft.IdentityModel.WsAddressing
+namespace Microsoft.IdentityModel.Protocols.WsAddressing
 {
     public class EndpointReference
     {

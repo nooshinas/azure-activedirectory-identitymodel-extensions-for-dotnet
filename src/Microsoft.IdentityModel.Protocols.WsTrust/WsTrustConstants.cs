@@ -54,6 +54,10 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
     {
         private static IList<string> _knownNamespaces = null;
 
+        public WsTrustActions WsTrustActions { get; protected set; }
+
+        public WsTrustKeyTypes WsTrustKeyTypes { get; protected set; }
+
         public static IList<string> KnownNamespaces
         {
             get
@@ -81,6 +85,8 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
         {
             Namespace = "http://schemas.xmlsoap.org/ws/2005/02/trust";
             Prefix = "t";
+            WsTrustActions = WsTrustActions.TrustFeb2005;
+            WsTrustKeyTypes = WsTrustKeyTypes.TrustFeb2005;
         }
     }
 
@@ -91,8 +97,10 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
     {
         public WsTrust13Constants()
         {
-            Prefix = "trust";
             Namespace = "http://docs.oasis-open.org/ws-sx/ws-trust/200512";
+            Prefix = "trust";
+            WsTrustActions = WsTrustActions.Trust13;
+            WsTrustKeyTypes = WsTrustKeyTypes.Trust13;
         }
     }
 
@@ -105,6 +113,8 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
         {
             Namespace = "http://docs.oasis-open.org/ws-sx/ws-trust/200802";
             Prefix = "tr";
+            WsTrustActions = WsTrustActions.Trust14;
+            WsTrustKeyTypes = WsTrustKeyTypes.Trust14;
         }
     }
 }

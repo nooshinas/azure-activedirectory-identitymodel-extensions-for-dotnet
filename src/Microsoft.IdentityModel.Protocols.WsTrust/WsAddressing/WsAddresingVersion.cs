@@ -30,7 +30,7 @@
 namespace Microsoft.IdentityModel.Protocols.WsAddressing
 {
     /// <summary>
-    /// Classes for specifying WS-Trust Feb2005, 1.3 and 1.4.
+    /// Classes for specifying WS-Addressing, 1.0 and 200408.
     /// </summary>
     public abstract class WsAddressingVersion
     {

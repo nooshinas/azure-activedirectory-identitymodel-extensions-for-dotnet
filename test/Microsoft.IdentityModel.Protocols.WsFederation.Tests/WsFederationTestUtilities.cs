@@ -31,7 +31,10 @@ using System.Text;
 using System.Xml;
 using Microsoft.IdentityModel.TestUtils;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.IdentityModel.Xml;
+using Microsoft.IdentityModel.Protocols.WsAddressing;
+using Microsoft.IdentityModel.Protocols.WsTrust;
+using Microsoft.IdentityModel.Protocols.WsUtility;
+using Microsoft.IdentityModel.Protocols.WsPolicy;
 
 namespace Microsoft.IdentityModel.Protocols.WsFederation.Tests
 {
@@ -49,8 +52,8 @@ namespace Microsoft.IdentityModel.Protocols.WsFederation.Tests
                     // <Lifetime>
                     writer.WriteStartElement(WsTrustConstants.Trust13.Prefix, WsTrustElements.Lifetime, WsTrustConstants.Trust13.Namespace);
 
-                    writer.WriteElementString(WsUtility.PreferredPrefix, WsUtility.Elements.Created, WsUtility.Namespace, Default.IssueInstantString);
-                    writer.WriteElementString(WsUtility.PreferredPrefix, WsUtility.Elements.Expires, WsUtility.Namespace, Default.ExpiresString);
+                    writer.WriteElementString(WsUtilityConstants.WsUtility10.Prefix, WsUtilityElements.Created, WsUtilityConstants.WsUtility10.Namespace, Default.IssueInstantString);
+                    writer.WriteElementString(WsUtilityConstants.WsUtility10.Prefix, WsUtilityElements.Expires, WsUtilityConstants.WsUtility10.Namespace, Default.ExpiresString);
 
                     // </Lifetime>
                     writer.WriteEndElement();

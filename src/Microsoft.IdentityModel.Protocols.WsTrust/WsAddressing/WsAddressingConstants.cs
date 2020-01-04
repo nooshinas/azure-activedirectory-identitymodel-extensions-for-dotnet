@@ -29,7 +29,7 @@
 
 using System.Collections.Generic;
 
-namespace Microsoft.IdentityModel.Protocols
+namespace Microsoft.IdentityModel.Protocols.WsAddressing
 {
     public abstract class WsAddressingConstants<T> : WsAddressingConstants where T : new()
     {

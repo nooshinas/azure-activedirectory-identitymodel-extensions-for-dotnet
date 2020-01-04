@@ -40,18 +40,17 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.IdentityModel.Tokens.Saml;
 using Microsoft.IdentityModel.Tokens.Saml2;
 using Microsoft.IdentityModel.Xml;
-using Microsoft.IdentityModel.WsPolicy;
-using Microsoft.IdentityModel.WsSecurity;
 
 #if !CrossVersionTokenValidation
-using Microsoft.IdentityModel.Protocols.WsPolicy;
-using Microsoft.IdentityModel.WsAddressing;
-using Microsoft.IdentityModel.Protocols.WsFed;
-using System.IdentityModel.Tokens.Jwt;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
+using Microsoft.IdentityModel.Protocols.WsAddressing;
+using Microsoft.IdentityModel.Protocols.WsFed;
 using Microsoft.IdentityModel.Protocols.WsFederation;
+using Microsoft.IdentityModel.Protocols.WsPolicy;
+using Microsoft.IdentityModel.Protocols.WsSecurity;
 using Microsoft.IdentityModel.Protocols.WsTrust;
+using System.IdentityModel.Tokens.Jwt;
 #endif
 
 namespace Microsoft.IdentityModel.TestUtils
@@ -72,41 +71,26 @@ namespace Microsoft.IdentityModel.TestUtils
                 { typeof(IEnumerable<string>).ToString(), AreStringEnumsEqual },
                 { typeof(IEnumerable<X509Data>).ToString(), AreX509DataEnumsEqual },
                 { typeof(IDictionary<string, string>).ToString(), AreStringDictionariesEqual},
-#if !CrossVersionTokenValidation
-                { typeof(List<JsonWebKey>).ToString(), AreJsonWebKeyEnumsEqual },
-#endif
                 { typeof(List<KeyInfo>).ToString(), AreKeyInfoEnumsEqual },
+                { typeof(List<Reference>).ToString(), AreReferenceEnumsEqual },
+                { typeof(List<SamlAction>).ToString(), AreSamlActionEnumsEqual },
                 { typeof(List<SamlAssertion>).ToString(), AreSamlAssertionEnumsEqual},
                 { typeof(List<SamlAttribute>).ToString(), AreSamlAttributeEnumsEqual },
                 { typeof(List<SamlAuthorityBinding>).ToString(), AreSamlAuthorityBindingEnumsEqual },
-                { typeof(List<SamlAction>).ToString(), AreSamlActionEnumsEqual },
-                { typeof(List<SamlStatement>).ToString(), AreSamlStatementEnumsEqual },
                 { typeof(List<SamlCondition>).ToString(), AreSamlConditionEnumsEqual },
+                { typeof(List<SamlStatement>).ToString(), AreSamlStatementEnumsEqual },
                 { typeof(List<SecurityKey>).ToString(), AreSecurityKeyEnumsEqual },
-                { typeof(List<Reference>).ToString(), AreReferenceEnumsEqual },
                 { typeof(List<Uri>).ToString(), AreUriEnumsEqual },
-                { typeof(X509Certificate2).ToString(), AreX509Certificate2Equal },
-                { typeof(AuthenticationProtocolMessage).ToString(), CompareAllPublicProperties },
                 { typeof(byte[]).ToString(), AreBytesEqual },
+                { typeof(CanonicalizingTransfrom).ToString(), CompareAllPublicProperties },
                 { typeof(Claim).ToString(), CompareAllPublicProperties },
                 { typeof(ClaimsIdentity).ToString(), CompareAllPublicProperties },
                 { typeof(ClaimsPrincipal).ToString(), CompareAllPublicProperties },
                 { typeof(ExclusiveCanonicalizationTransform).ToString(), CompareAllPublicProperties },
-                { typeof(CanonicalizingTransfrom).ToString(), CompareAllPublicProperties },
                 { typeof(EnvelopedSignatureTransform).ToString(), CompareAllPublicProperties },
                 { typeof(IssuerSerial).ToString(), CompareAllPublicProperties },
                 { typeof(JArray).ToString(), AreJArraysEqual },
                 { typeof(JObject).ToString(), AreJObjectsEqual },
-#if !CrossVersionTokenValidation
-                { typeof(JsonWebKey).ToString(), CompareAllPublicProperties },
-                { typeof(JsonWebKeySet).ToString(), CompareAllPublicProperties },
-                { typeof(JsonWebToken).ToString(), CompareAllPublicProperties },
-                { typeof(JsonWebTokenHandler).ToString(), CompareAllPublicProperties },
-                { typeof(JwtHeader).ToString(), CompareAllPublicProperties },
-                { typeof(JwtPayload).ToString(), CompareAllPublicProperties },
-                { typeof(JwtSecurityToken).ToString(), CompareAllPublicProperties },
-                { typeof(JwtSecurityTokenHandler).ToString(), CompareAllPublicProperties },
-#endif
                 { typeof(KeyInfo).ToString(), CompareAllPublicProperties },
                 { typeof(OpenIdConnectConfiguration).ToString(), CompareAllPublicProperties },
                 { typeof(OpenIdConnectMessage).ToString(), CompareAllPublicProperties },
@@ -114,22 +98,6 @@ namespace Microsoft.IdentityModel.TestUtils
                 { typeof(RSAKeyValue).ToString(), CompareAllPublicProperties },
                 { typeof(RsaSecurityKey).ToString(), CompareAllPublicProperties },
                 { typeof(RSAParameters).ToString(), AreRsaParametersEqual },
-                { typeof(SamlAction).ToString(), CompareAllPublicProperties },
-                { typeof(SamlAudienceRestrictionCondition).ToString(), CompareAllPublicProperties },
-                { typeof(SamlAssertion).ToString(), CompareAllPublicProperties},
-                { typeof(SamlAttribute).ToString(), CompareAllPublicProperties },
-                { typeof(SamlAttributeStatement).ToString(), CompareAllPublicProperties },
-                { typeof(SamlAuthenticationStatement).ToString(), CompareAllPublicProperties },
-                { typeof(SamlAuthorityBinding).ToString(), CompareAllPublicProperties },
-                { typeof(SamlAuthorizationDecisionStatement).ToString(), CompareAllPublicProperties },
-                { typeof(SamlCondition).ToString(), CompareAllPublicProperties },
-                { typeof(SamlDoNotCacheCondition).ToString(), CompareAllPublicProperties },
-                { typeof(SamlSecurityToken).ToString(), CompareAllPublicProperties },
-#if !CrossVersionTokenValidation
-                { typeof(SamlSecurityTokenHandler).ToString(), CompareAllPublicProperties },
-#endif
-                { typeof(SamlStatement).ToString(), CompareAllPublicProperties },
-                { typeof(SamlSubject).ToString(), CompareAllPublicProperties },
                 { typeof(Saml2Action).ToString(), CompareAllPublicProperties },
                 { typeof(Saml2Advice).ToString(), CompareAllPublicProperties },
                 { typeof(Saml2Assertion).ToString(), CompareAllPublicProperties },
@@ -149,9 +117,19 @@ namespace Microsoft.IdentityModel.TestUtils
                 { typeof(Saml2SubjectConfirmation).ToString(), CompareAllPublicProperties },
                 { typeof(Saml2SubjectConfirmationData).ToString(), CompareAllPublicProperties },
                 { typeof(Saml2SubjectLocality).ToString(), CompareAllPublicProperties },
-#if !CrossVersionTokenValidation
-                { typeof(Saml2SecurityTokenHandler).ToString(), CompareAllPublicProperties },
-#endif
+                { typeof(SamlAction).ToString(), CompareAllPublicProperties },
+                { typeof(SamlAudienceRestrictionCondition).ToString(), CompareAllPublicProperties },
+                { typeof(SamlAssertion).ToString(), CompareAllPublicProperties},
+                { typeof(SamlAttribute).ToString(), CompareAllPublicProperties },
+                { typeof(SamlAttributeStatement).ToString(), CompareAllPublicProperties },
+                { typeof(SamlAuthenticationStatement).ToString(), CompareAllPublicProperties },
+                { typeof(SamlAuthorityBinding).ToString(), CompareAllPublicProperties },
+                { typeof(SamlAuthorizationDecisionStatement).ToString(), CompareAllPublicProperties },
+                { typeof(SamlCondition).ToString(), CompareAllPublicProperties },
+                { typeof(SamlDoNotCacheCondition).ToString(), CompareAllPublicProperties },
+                { typeof(SamlSecurityToken).ToString(), CompareAllPublicProperties },
+                { typeof(SamlStatement).ToString(), CompareAllPublicProperties },
+                { typeof(SamlSubject).ToString(), CompareAllPublicProperties },
                 { typeof(SecurityKey).ToString(), CompareAllPublicProperties },
                 { typeof(SecurityToken).ToString(), CompareAllPublicProperties},
                 { typeof(SecurityTokenHandler).ToString(), CompareAllPublicProperties},
@@ -165,28 +143,87 @@ namespace Microsoft.IdentityModel.TestUtils
                 { typeof(WsFederationConfiguration).ToString(), CompareAllPublicProperties },
                 { typeof(WsFederationMessage).ToString(), CompareAllPublicProperties },
                 { typeof(Uri).ToString(), AreUrisEqual },
-#if !CrossVersionTokenValidation
-                { typeof(Claims).ToString(), CompareAllPublicProperties },
-                { typeof(List<ClaimType>).ToString(), AreClaimTypeEnumsEqual },
-                { typeof(ClaimType).ToString(), CompareAllPublicProperties },
-                { typeof(EndpointReference).ToString(), CompareAllPublicProperties },
-                { typeof(AdditionalContext).ToString(), CompareAllPublicProperties },
-                { typeof(AppliesTo).ToString(), CompareAllPublicProperties },
-                { typeof(WsTrustResponse).ToString(), CompareAllPublicProperties },
-                { typeof(RequestSecurityTokenResponse).ToString(), CompareAllPublicProperties },
-                { typeof(SecurityTokenReference).ToString(), CompareAllPublicProperties },
-                { typeof(RequestedSecurityToken).ToString(), CompareAllPublicProperties },
-                { typeof(KeyIdentifier).ToString(), CompareAllPublicProperties },
-                { typeof(Lifetime).ToString(), CompareLifetime },
-                { typeof(Entropy).ToString(), CompareAllPublicProperties },
-                { typeof(WsTrustRequest).ToString(), CompareAllPublicProperties },
-                { typeof(PolicyReference).ToString(), CompareAllPublicProperties },
-                { typeof(List<RequestSecurityTokenResponse>).ToString(), AreRequestSecurityTokenResponseEnumsEqual },
-
-#endif
+                { typeof(X509Certificate2).ToString(), AreX509Certificate2Equal },
                 { typeof(X509Data).ToString(), CompareAllPublicProperties },
                 { typeof(X509SigningCredentials).ToString(), CompareAllPublicProperties },
+#if !CrossVersionTokenValidation
+                { typeof(AdditionalContext).ToString(), CompareAllPublicProperties },
+                { typeof(AppliesTo).ToString(), CompareAllPublicProperties },
+                { typeof(AuthenticationProtocolMessage).ToString(), CompareAllPublicProperties },
+                { typeof(Claims).ToString(), CompareAllPublicProperties },
+                { typeof(ClaimType).ToString(), CompareAllPublicProperties },
+                { typeof(EndpointReference).ToString(), CompareAllPublicProperties },
+                { typeof(Entropy).ToString(), CompareAllPublicProperties },                                
+                { typeof(KeyIdentifier).ToString(), CompareAllPublicProperties },
+                { typeof(Lifetime).ToString(), CompareLifetime },
+                { typeof(List<ClaimType>).ToString(), AreClaimTypeEnumsEqual },
+                { typeof(List<JsonWebKey>).ToString(), AreJsonWebKeyEnumsEqual },
+                { typeof(List<RequestSecurityTokenResponse>).ToString(), AreRequestSecurityTokenResponseEnumsEqual },
+                { typeof(JsonWebKey).ToString(), CompareAllPublicProperties },
+                { typeof(JsonWebKeySet).ToString(), CompareAllPublicProperties },
+                { typeof(JsonWebToken).ToString(), CompareAllPublicProperties },
+                { typeof(JsonWebTokenHandler).ToString(), CompareAllPublicProperties },
+                { typeof(JwtHeader).ToString(), CompareAllPublicProperties },
+                { typeof(JwtPayload).ToString(), CompareAllPublicProperties },
+                { typeof(JwtSecurityToken).ToString(), CompareAllPublicProperties },
+                { typeof(JwtSecurityTokenHandler).ToString(), CompareAllPublicProperties },
+                { typeof(PolicyReference).ToString(), CompareAllPublicProperties },
+                { typeof(RequestedSecurityToken).ToString(), CompareAllPublicProperties },
+                { typeof(RequestSecurityTokenResponse).ToString(), CompareAllPublicProperties },
+                { typeof(Saml2SecurityTokenHandler).ToString(), CompareAllPublicProperties },
+                { typeof(SamlSecurityTokenHandler).ToString(), CompareAllPublicProperties },
+                { typeof(SecurityTokenReference).ToString(), CompareAllPublicProperties },
+                { typeof(WsTrustRequest).ToString(), CompareAllPublicProperties },
+                { typeof(WsTrustResponse).ToString(), CompareAllPublicProperties },
+#endif
             };
+
+#if !CrossVersionTokenValidation
+        public static bool AreJsonWebKeyEnumsEqual(object object1, object object2, CompareContext context)
+        {
+            return AreEnumsEqual<JsonWebKey>(object1 as IEnumerable<JsonWebKey>, object2 as IEnumerable<JsonWebKey>, context, AreEqual);
+        }
+        public static bool AreClaimTypeEnumsEqual(object object1, object object2, CompareContext context)
+        {
+            return AreEnumsEqual<ClaimType>(object1 as IEnumerable<ClaimType>, object2 as IEnumerable<ClaimType>, context, AreEqual);
+        }
+
+        public static bool AreRequestSecurityTokenResponseEnumsEqual(object object1, object object2, CompareContext context)
+        {
+            return AreEnumsEqual<RequestSecurityTokenResponse>(object1 as IEnumerable<RequestSecurityTokenResponse>, object2 as IEnumerable<RequestSecurityTokenResponse>, context, AreEqual);
+        }
+
+        public static bool AreJwtSecurityTokensEqual(JwtSecurityToken jwt1, JwtSecurityToken jwt2, CompareContext context)
+        {
+            var localContext = new CompareContext(context);
+            if (!ContinueCheckingEquality(jwt1, jwt2, localContext))
+                return context.Merge(localContext);
+
+            CompareAllPublicProperties(jwt1, jwt2, localContext);
+            return context.Merge(localContext);
+        }
+
+        public static bool CompareLifetime(object obj1, object obj2, CompareContext context)
+        {
+            var lifetime1 = obj1 as Lifetime;
+            var lifetime2 = obj2 as Lifetime;
+            var localContext = new CompareContext(context);
+
+            if (lifetime1.Created.HasValue != lifetime2.Created.HasValue)
+                localContext.Diffs.Add($"lifetime1.Created.HasValue != lifetime2.Created.HasValue '{lifetime1.Created.HasValue}:{lifetime2.Created.HasValue}'");
+            else
+                CompareDateTime(lifetime1.Created.Value, lifetime2.Created.Value, localContext);
+
+
+            if (lifetime1.Expires.HasValue != lifetime2.Expires.HasValue)
+                localContext.Diffs.Add($"lifetime1.Expires.HasValue != lifetime2.Expires.HasValue '{lifetime1.Expires.HasValue}:{lifetime2.Expires.HasValue}'");
+            else
+                CompareDateTime(lifetime1.Expires.Value, lifetime2.Expires.Value, localContext);
+
+            context.Merge(localContext);
+            return localContext.Diffs.Count == 0;
+        }
+#endif
 
         public static bool AreBoolsEqual(object object1, object object2, CompareContext context)
         {
@@ -210,22 +247,6 @@ namespace Microsoft.IdentityModel.TestUtils
             return context.Merge(localContext);
         }
 
-#if !CrossVersionTokenValidation
-        public static bool AreJsonWebKeyEnumsEqual(object object1, object object2, CompareContext context)
-        {
-            return AreEnumsEqual<JsonWebKey>(object1 as IEnumerable<JsonWebKey>, object2 as IEnumerable<JsonWebKey>, context, AreEqual);
-        }
-        public static bool AreClaimTypeEnumsEqual(object object1, object object2, CompareContext context)
-        {
-            return AreEnumsEqual<ClaimType>(object1 as IEnumerable<ClaimType>, object2 as IEnumerable<ClaimType>, context, AreEqual);
-        }
-
-        public static bool AreRequestSecurityTokenResponseEnumsEqual(object object1, object object2, CompareContext context)
-        {
-            return AreEnumsEqual<RequestSecurityTokenResponse>(object1 as IEnumerable<RequestSecurityTokenResponse>, object2 as IEnumerable<RequestSecurityTokenResponse>, context, AreEqual);
-        }
-
-#endif
         public static bool AreKeyInfoEnumsEqual(object object1, object object2, CompareContext context)
         {
             return AreEnumsEqual<KeyInfo>(object1 as IEnumerable<KeyInfo>, object2 as IEnumerable<KeyInfo>, context, AreEqual);
@@ -785,18 +806,6 @@ namespace Microsoft.IdentityModel.TestUtils
             return localContext.Diffs.Count == 0;
         }
 
-#if !CrossVersionTokenValidation
-        public static bool AreJwtSecurityTokensEqual(JwtSecurityToken jwt1, JwtSecurityToken jwt2, CompareContext context)
-        {
-            var localContext = new CompareContext(context);
-            if (!ContinueCheckingEquality(jwt1, jwt2, localContext))
-                return context.Merge(localContext);
-
-            CompareAllPublicProperties(jwt1, jwt2, localContext);
-            return context.Merge(localContext);
-        }
-#endif
-
         public static bool AreSecurityKeysEqual(SecurityKey securityKey1, SecurityKey securityKey2, CompareContext context)
         {
             var localContext = new CompareContext(context);
@@ -999,27 +1008,6 @@ namespace Microsoft.IdentityModel.TestUtils
         public static string BuildStringDiff(string label, object str1, object str2)
         {
             return (label ?? "label") + ": '" + GetString(str1) + "', '" + GetString(str2) + "'";
-        }
-
-        public static bool CompareLifetime(object obj1, object obj2, CompareContext context)
-        {
-            var lifetime1 = obj1 as Lifetime;
-            var lifetime2 = obj2 as Lifetime;
-            var localContext = new CompareContext(context);
-
-            if (lifetime1.Created.HasValue != lifetime2.Created.HasValue)
-                localContext.Diffs.Add($"lifetime1.Created.HasValue != lifetime2.Created.HasValue '{lifetime1.Created.HasValue}:{lifetime2.Created.HasValue}'");
-            else
-                CompareDateTime(lifetime1.Created.Value, lifetime2.Created.Value, localContext);
-
-
-            if (lifetime1.Expires.HasValue != lifetime2.Expires.HasValue)
-                localContext.Diffs.Add($"lifetime1.Expires.HasValue != lifetime2.Expires.HasValue '{lifetime1.Expires.HasValue}:{lifetime2.Expires.HasValue}'");
-            else
-                CompareDateTime(lifetime1.Expires.Value, lifetime2.Expires.Value, localContext);
-
-            context.Merge(localContext);
-            return localContext.Diffs.Count == 0;
         }
 
         public static void CompareDateTime(DateTime dateTime1, DateTime dateTime2, CompareContext context)

@@ -29,7 +29,7 @@
 
 using System.Collections.Generic;
 
-namespace Microsoft.IdentityModel.Protocols
+namespace Microsoft.IdentityModel.Protocols.WsUtility
 {
     public abstract class WsUtilityConstants<T> : WsUtilityConstants where T : new()
     {

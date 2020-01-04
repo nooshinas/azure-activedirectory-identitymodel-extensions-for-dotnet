@@ -27,7 +27,7 @@
 
 #pragma warning disable 1591
 
-namespace Microsoft.IdentityModel.WsSecurity
+namespace Microsoft.IdentityModel.Protocols.WsSecurity
 {
     /// <summary>
     /// Provides elements for WS-Security 1.0 and 1.1.

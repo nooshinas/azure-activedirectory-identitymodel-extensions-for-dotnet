@@ -29,7 +29,7 @@
 
 using System.Collections.Generic;
 
-namespace Microsoft.IdentityModel.Protocols
+namespace Microsoft.IdentityModel.Protocols.WsPolicy
 {
     public abstract class WsPolicyConstants<T> : WsPolicyConstants where T : new()
     {

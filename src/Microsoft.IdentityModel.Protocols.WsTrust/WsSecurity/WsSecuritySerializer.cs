@@ -26,14 +26,13 @@
 //------------------------------------------------------------------------------
 
 using System.Xml;
-using Microsoft.IdentityModel.Protocols.WsTrust;
 
 #pragma warning disable 1591
 
-namespace Microsoft.IdentityModel.WsSecurity
+namespace Microsoft.IdentityModel.Protocols.WsSecurity
 {
     /// <summary>
-    /// Base class for support of versions of WS-Trust request messages.
+    /// Base class for support of serializing versions of WS-Security.
     /// </summary>
     internal class WsSecuritySerializer
     {
@@ -59,8 +58,6 @@ namespace Microsoft.IdentityModel.WsSecurity
 
             bool isEmptyElement = reader.IsEmptyElement;
             reader.ReadStartElement();
-            reader.MoveToContent();
-
             if (reader.IsStartElement(WsSecurityElements.KeyIdentifier, serializationContext.SecurityConstants.Namespace))
                 securityTokenReference.KeyIdentifier = ReadKeyIdentifier(reader, serializationContext);
 
@@ -103,6 +100,7 @@ namespace Microsoft.IdentityModel.WsSecurity
             //                      EncodingType="...">
             //      ...
             //  </wsse:KeyIdentifier>
+
             writer.WriteStartElement(serializationContext.SecurityConstants.Prefix, WsSecurityElements.KeyIdentifier, serializationContext.SecurityConstants.Namespace);
 
             if (!string.IsNullOrEmpty(keyIdentifier.Id))
@@ -129,6 +127,7 @@ namespace Microsoft.IdentityModel.WsSecurity
             //          ...
             //      </wsse:KeyIdentifier>
             //  </wsse:SecurityTokenReference>
+
             writer.WriteStartElement(serializationContext.SecurityConstants.Prefix, WsSecurityElements.SecurityTokenReference, serializationContext.SecurityConstants.Namespace);
 
             if (!string.IsNullOrEmpty(securityTokenReference.TokenType))

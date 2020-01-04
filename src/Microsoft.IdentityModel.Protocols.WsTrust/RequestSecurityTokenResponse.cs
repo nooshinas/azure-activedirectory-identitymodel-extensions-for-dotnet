@@ -25,7 +25,7 @@
 //
 //------------------------------------------------------------------------------
 
-using Microsoft.IdentityModel.WsSecurity;
+using Microsoft.IdentityModel.Protocols.WsSecurity;
 
 namespace Microsoft.IdentityModel.Protocols.WsTrust
 {

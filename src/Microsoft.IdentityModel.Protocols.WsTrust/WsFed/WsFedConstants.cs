@@ -29,7 +29,7 @@
 
 using System.Collections.Generic;
 
-namespace Microsoft.IdentityModel.Protocols
+namespace Microsoft.IdentityModel.Protocols.WsFed
 {
     public abstract class WsFedConstants<T> : WsFedConstants where T : new()
     {

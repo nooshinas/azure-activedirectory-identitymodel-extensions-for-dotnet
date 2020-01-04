@@ -27,16 +27,56 @@
 
 #pragma warning disable 1591
 
-using Microsoft.IdentityModel.WsSecurity;
-using FedConstants = Microsoft.IdentityModel.Protocols.WsFedConstants;
+using Microsoft.IdentityModel.Protocols.WsAddressing;
+using Microsoft.IdentityModel.Protocols.WsFed;
+using Microsoft.IdentityModel.Protocols.WsPolicy;
+using Microsoft.IdentityModel.Protocols.WsSecurity;
+using Microsoft.IdentityModel.Protocols.WsTrust;
 
-namespace Microsoft.IdentityModel.Protocols.WsTrust
+namespace Microsoft.IdentityModel.Protocols
 {
     /// <summary>
     /// Used to remember the prefix, namespace to use / expect when reading and writing WsTrust Requests and Responses.
     /// </summary>
     public class WsSerializationContext
     {
+        public WsSerializationContext(WsTrustVersion wsTrustVersion, WsAddressingVersion wsAddressingVersion, WsSecurityVersion wsSecurityVersion)
+        {
+            TrustVersion = wsTrustVersion;
+
+            FedConstants = WsFedConstants.Fed12;
+            PolicyConstants = WsPolicyConstants.Policy12;
+
+            if (wsAddressingVersion is WsAddressing10Version)
+                AddressingConstants = WsAddressingConstants.Addressing10;
+            else
+                AddressingConstants = WsAddressingConstants.Addressing200408;
+
+            if (wsSecurityVersion is WsSecurity10Version)
+                SecurityConstants = WsSecurityConstants.WsSecurity10;
+            else
+                SecurityConstants = WsSecurityConstants.WsSecurity11;
+
+            if (wsTrustVersion is WsTrustFeb2005Version)
+            {
+                TrustActions = WsTrustActions.TrustFeb2005;
+                TrustConstants = WsTrustConstants.TrustFeb2005;
+                TrustKeyTypes = WsTrustKeyTypes.TrustFeb2005;
+            }
+            else if (wsTrustVersion is WsTrust13Version)
+            {
+                TrustActions = WsTrustActions.Trust13;
+                TrustConstants = WsTrustConstants.Trust13;
+                TrustKeyTypes = WsTrustKeyTypes.Trust13;
+            }
+            else if (wsTrustVersion is WsTrust14Version)
+            {
+                TrustActions = WsTrustActions.Trust14;
+                TrustConstants = WsTrustConstants.Trust14;
+                TrustKeyTypes = WsTrustKeyTypes.Trust14;
+            }
+        }
+
         public WsSerializationContext(WsTrustVersion wsTrustVersion)
         {
             TrustVersion = wsTrustVersion;
@@ -44,7 +84,7 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
             if (wsTrustVersion is WsTrustFeb2005Version)
             {
                 AddressingConstants = WsAddressingConstants.Addressing10;
-                FedConstants = FedConstants.Fed12;
+                FedConstants = WsFedConstants.Fed12;
                 PolicyConstants = WsPolicyConstants.Policy12;
                 SecurityConstants = WsSecurityConstants.WsSecurity10;
                 TrustActions = WsTrustActions.TrustFeb2005;
@@ -54,7 +94,7 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
             else if (wsTrustVersion is WsTrust13Version)
             {
                 AddressingConstants = WsAddressingConstants.Addressing10;
-                FedConstants = FedConstants.Fed12;
+                FedConstants = WsFedConstants.Fed12;
                 PolicyConstants = WsPolicyConstants.Policy12;
                 SecurityConstants = WsSecurityConstants.WsSecurity11;
                 TrustActions = WsTrustActions.Trust13;
@@ -64,7 +104,7 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
             else if (wsTrustVersion is WsTrust14Version)
             {
                 AddressingConstants = WsAddressingConstants.Addressing10;
-                FedConstants = FedConstants.Fed12;
+                FedConstants = WsFedConstants.Fed12;
                 PolicyConstants = WsPolicyConstants.Policy12;
                 SecurityConstants = WsSecurityConstants.WsSecurity11;
                 TrustActions = WsTrustActions.Trust14;

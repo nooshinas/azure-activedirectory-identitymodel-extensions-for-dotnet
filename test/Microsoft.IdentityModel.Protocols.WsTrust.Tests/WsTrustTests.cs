@@ -28,15 +28,15 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Xml;
 using Microsoft.IdentityModel.Protocols.WsFed;
 using Microsoft.IdentityModel.Protocols.WsPolicy;
+using Microsoft.IdentityModel.Protocols.WsSecurity;
 using Microsoft.IdentityModel.TestUtils;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.IdentityModel.Tokens.Saml2;
-using Microsoft.IdentityModel.WsSecurity;
+
 using Xunit;
 
 #pragma warning disable CS3016 // Arrays as attribute arguments is not CLS-compliant
@@ -83,7 +83,6 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust.Tests
         public void ReadAndWriteRequest(WsTrustTheoryData theoryData)
         {
             var context = TestUtilities.WriteHeader($"{this}.ReadAndWriteRequest", theoryData);
-
             try
             {
                 var memeoryStream = new MemoryStream();
@@ -130,6 +129,7 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust.Tests
                     },
                     out SecurityToken securityToken);
 
+                var trustConstants = WsTrust13Constants.Instance;
                 return new TheoryData<WsTrustTheoryData>
                 {
                     new WsTrustTheoryData
@@ -143,14 +143,14 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust.Tests
                             CanonicalizationAlgorithm = SecurityAlgorithms.ExclusiveC14n,
                             Claims = requestClaims,
                             Context = Guid.NewGuid().ToString(),
-                            ComputedKeyAlgorithm = WsTrustKeyTypes.Trust13.PSHA1,
+                            ComputedKeyAlgorithm = trustConstants.WsTrustKeyTypes.PSHA1,
                             EncryptionAlgorithm = SecurityAlgorithms.Aes256Encryption,
                             EncryptWith = SecurityAlgorithms.Aes256Encryption,
                             KeySizeInBits = 256,
-                            KeyType = WsTrustKeyTypes.Trust13.PublicKey,
+                            KeyType = trustConstants.WsTrustKeyTypes.PublicKey,
                             OnBehalfOf = securityToken,
                             PolicyReference = new PolicyReference(Default.Uri, SecurityAlgorithms.Sha256Digest, Guid.NewGuid().ToString()),
-                            RequestType = WsTrustActions.Trust13.Issue,
+                            RequestType = trustConstants.WsTrustActions.Issue,
                             SignWith = SecurityAlgorithms.Sha256Digest,
                             TokenType = Saml2Constants.OasisWssSaml2TokenProfile11
                         },
@@ -178,11 +178,14 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust.Tests
                 var reader = XmlDictionaryReader.CreateTextReader(bytes, XmlDictionaryReaderQuotas.Max);
                 var response = serializer.ReadResponse(reader);
                 IdentityComparer.AreEqual(response, theoryData.WsTrustResponse, context);
-                var validationParameters = new TokenValidationParameters();
-                validationParameters.IssuerSigningKey = Default.AsymmetricSigningCredentials.Key;
-                validationParameters.ValidateAudience = false;
-                validationParameters.ValidateIssuer = false;
-                validationParameters.ValidateLifetime = false;
+                var validationParameters = new TokenValidationParameters
+                {
+                    IssuerSigningKey = Default.AsymmetricSigningCredentials.Key,
+                    ValidateAudience = false,
+                    ValidateIssuer = false,
+                    ValidateLifetime = false
+                };
+
                 var tokenHandler = new Saml2SecurityTokenHandler();
                 var token = response.RequestSecurityTokenResponseCollection[0].RequestedSecurityToken.SecurityToken as Saml2SecurityToken;
                 var cp = tokenHandler.ValidateToken(token.Assertion.CanonicalString, validationParameters, out SecurityToken securityToken);

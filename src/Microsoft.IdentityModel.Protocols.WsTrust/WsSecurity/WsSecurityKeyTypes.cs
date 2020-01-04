@@ -27,7 +27,7 @@
 
 #pragma warning disable 1591
 
-namespace Microsoft.IdentityModel.WsSecurity
+namespace Microsoft.IdentityModel.Protocols.WsSecurity
 {
     public abstract class WsSecurityKeyTypes<T> : WsSecurityKeyTypes where T : new()
     {

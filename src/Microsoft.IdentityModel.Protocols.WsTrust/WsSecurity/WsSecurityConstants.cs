@@ -30,7 +30,7 @@
 using System.Collections.Generic;
 using Microsoft.IdentityModel.Protocols;
 
-namespace Microsoft.IdentityModel.WsSecurity
+namespace Microsoft.IdentityModel.Protocols.WsSecurity
 {
     public abstract class WsSecurityConstants<T> : WsSecurityConstants where T : new()
     {
@@ -71,6 +71,8 @@ namespace Microsoft.IdentityModel.WsSecurity
         public static WsSecurity11Constants WsSecurity11 => WsSecurity11Constants.Instance;
 
         public string FragmentBaseAddress { get; protected set; }
+
+        public WsSecurityEncodingTypes EncodingTypes { get; protected set; }
     }
 
     /// <summary>
@@ -80,6 +82,7 @@ namespace Microsoft.IdentityModel.WsSecurity
     {
         public WsSecurity10Constants()
         {
+            EncodingTypes = WsSecurity10EncodingTypes.Instance;
             FragmentBaseAddress = "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0";
             Prefix = "wsse";
             Namespace = "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd";
@@ -93,6 +96,7 @@ namespace Microsoft.IdentityModel.WsSecurity
     {
         public WsSecurity11Constants()
         {
+            EncodingTypes = WsSecurity11EncodingTypes.Instance;
             FragmentBaseAddress = "http://docs.oasis-open.org/wss/oasis-wss-soap-message-security-1.1";
             Namespace = "http://docs.oasis-open.org/wss/oasis-wss-wssecurity-secext-1.1.xsd";
             Prefix = "wsse11";

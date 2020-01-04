@@ -27,11 +27,11 @@
 
 using System.Xml;
 using Microsoft.IdentityModel.Logging;
-using Microsoft.IdentityModel.WsAddressing;
+using Microsoft.IdentityModel.Protocols.WsAddressing;
 
 #pragma warning disable 1591
 
-namespace Microsoft.IdentityModel.WsPolicy
+namespace Microsoft.IdentityModel.Protocols.WsPolicy
 {
     public class AppliesTo
     {

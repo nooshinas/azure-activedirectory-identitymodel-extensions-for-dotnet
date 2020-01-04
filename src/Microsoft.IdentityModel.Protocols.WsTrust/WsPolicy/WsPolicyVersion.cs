@@ -27,10 +27,10 @@
 
 #pragma warning disable 1591
 
-namespace Microsoft.IdentityModel.Protocols.WsTrust
+namespace Microsoft.IdentityModel.Protocols.WsPolicy
 {
     /// <summary>
-    /// Classes for specifying WS-Trust Feb2005, 1.3 and 1.4.
+    /// Classes for specifying WS-Policy, 1.2 and 1.5.
     /// </summary>
     public abstract class WsPolicyVersion
     {
@@ -40,12 +40,12 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
     }
 
     /// <summary>
-    /// Class for specifying WS-Addressing 10.
+    /// Class for specifying WS-Policy 1.2.
     /// </summary>
     internal class WsPolicy12Version : WsPolicyVersion { }
 
     /// <summary>
-    /// Class for specifying WS-Addressing 200408.
+    /// Class for specifying WS-Policy 1.5.
     /// </summary>
     internal class WsPolicy15Version : WsPolicyVersion { }
 

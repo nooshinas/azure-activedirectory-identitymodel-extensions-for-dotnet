@@ -30,14 +30,14 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Xml;
 using Microsoft.IdentityModel.Logging;
+using Microsoft.IdentityModel.Protocols.WsAddressing;
 using Microsoft.IdentityModel.Protocols.WsFed;
 using Microsoft.IdentityModel.Protocols.WsPolicy;
+using Microsoft.IdentityModel.Protocols.WsSecurity;
+using Microsoft.IdentityModel.Protocols.WsUtility;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.IdentityModel.Tokens.Saml;
 using Microsoft.IdentityModel.Tokens.Saml2;
-using Microsoft.IdentityModel.WsAddressing;
-using Microsoft.IdentityModel.WsPolicy;
-using Microsoft.IdentityModel.WsSecurity;
 using Microsoft.IdentityModel.Xml;
 
 #pragma warning disable 1591

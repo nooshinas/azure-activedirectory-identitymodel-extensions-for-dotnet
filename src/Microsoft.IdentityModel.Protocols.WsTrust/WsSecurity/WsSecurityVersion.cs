@@ -27,26 +27,26 @@
 
 #pragma warning disable 1591
 
-namespace Microsoft.IdentityModel.Protocols.WsTrust
+namespace Microsoft.IdentityModel.Protocols.WsSecurity
 {
     /// <summary>
-    /// Classes for specifying WS-Trust Feb2005, 1.3 and 1.4.
+    /// Classes for specifying WS-Security, 1.0 and 1.1.
     /// </summary>
-    public abstract class WsAddressingVersion
+    public abstract class WsSecurityVersion
     {
-        public static WsAddressingVersion Addressing10 = new WsAddressing10Version();
+        public static WsSecurityVersion Security10 = new WsSecurity10Version();
 
-        public static WsAddressingVersion Addressing200408 = new WsAddressing200408Version();
+        public static WsSecurityVersion Security11 = new WsSecurity11Version();
     }
 
     /// <summary>
-    /// Class for specifying WS-Addressing 10.
+    /// Class for specifying WS-Security 10.
     /// </summary>
-    internal class WsAddressing10Version : WsAddressingVersion { }
+    internal class WsSecurity10Version : WsSecurityVersion { }
 
     /// <summary>
-    /// Class for specifying WS-Addressing 200408.
+    /// Class for specifying WS-Security 11.
     /// </summary>
-    internal class WsAddressing200408Version : WsAddressingVersion { }
+    internal class WsSecurity11Version : WsSecurityVersion { }
 
 }
