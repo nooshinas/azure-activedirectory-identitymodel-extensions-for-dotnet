@@ -25,7 +25,8 @@
 //
 //------------------------------------------------------------------------------
 
-using Microsoft.IdentityModel.Xml;
+using Microsoft.IdentityModel.Protocols.WsSecurity;
+using Microsoft.IdentityModel.Tokens;
 
 namespace Microsoft.IdentityModel.Protocols.WsTrust
 {
@@ -35,19 +36,30 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
     /// </summary>
     public class UseKey
     {
-        // [brentsch] - do we need this class
         /// <summary>
         /// Creates an instance of <see cref="UseKey"/>.
         /// </summary>
-        /// <param name="keyInfo">A security key identifier which represents the existing key that should be used. </param>
-        public UseKey(KeyInfo keyInfo)
-        { 
-            KeyInfo = keyInfo;
+         public UseKey()
+        {
+        }
+
+        /// <summary>
+        /// Creates an instance of <see cref="UseKey"/>.
+        /// </summary>
+        /// <param name="securityTokenReference">A <see cref="SecurityTokenReference"/> that is used to represents the existing key that should be used.</param>
+        public UseKey(SecurityTokenReference securityTokenReference)
+        {
+            SecurityTokenReference = securityTokenReference;
         }
 
         /// <summary>
         /// Gets the security key identifier.
         /// </summary>
-        public KeyInfo KeyInfo { get; set; }
+        public SecurityTokenReference SecurityTokenReference { get; set; }
+
+        /// <summary>
+        /// Gets the security key identifier.
+        /// </summary>
+        public string SignatureId { get; set; }
     }
 }

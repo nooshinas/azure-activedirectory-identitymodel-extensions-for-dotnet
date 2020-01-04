@@ -41,6 +41,7 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
         public const string KeyExchangeToken = "KeyExchangeToken";
         public const string OK = "OK";
         public const string RequestKET = "RequestKET";
+        public const string Sig = "Sig";
         public const string Type = "Type";
         public const string ValueType = "ValueType";
     }

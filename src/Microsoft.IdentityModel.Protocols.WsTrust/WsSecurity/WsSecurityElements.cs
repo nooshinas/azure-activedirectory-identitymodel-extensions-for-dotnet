@@ -30,7 +30,7 @@
 namespace Microsoft.IdentityModel.Protocols.WsSecurity
 {
     /// <summary>
-    /// Provides elements for WS-Security 1.0 and 1.1.
+    /// Elements for WS-Security 1.0 and 1.1.
     /// </summary>
     public static class WsSecurityElements
     {

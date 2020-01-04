@@ -37,6 +37,7 @@
 
   <ItemGroup>
     <Folder Include="Exceptions\" />
+    <Folder Include="Protocols\" />
     <Folder Include="WsSecurityPolicy\" />
   </ItemGroup>
 

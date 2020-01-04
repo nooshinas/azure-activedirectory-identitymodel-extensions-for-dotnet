@@ -152,7 +152,8 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust.Tests
                             PolicyReference = new PolicyReference(Default.Uri, SecurityAlgorithms.Sha256Digest, Guid.NewGuid().ToString()),
                             RequestType = trustConstants.WsTrustActions.Issue,
                             SignWith = SecurityAlgorithms.Sha256Digest,
-                            TokenType = Saml2Constants.OasisWssSaml2TokenProfile11
+                            TokenType = Saml2Constants.OasisWssSaml2TokenProfile11,
+                            UseKey = new UseKey(WsDefaults.SecurityTokenReference){ SignatureId = Guid.NewGuid().ToString() }
                         },
                         TestId = "WsTrustRequestWithSaml2OBO",
                         WsTrustVersion = WsTrustVersion.Trust13

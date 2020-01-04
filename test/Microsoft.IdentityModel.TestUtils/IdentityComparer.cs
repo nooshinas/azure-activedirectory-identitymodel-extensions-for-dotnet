@@ -175,6 +175,7 @@ namespace Microsoft.IdentityModel.TestUtils
                 { typeof(SecurityTokenReference).ToString(), CompareAllPublicProperties },
                 { typeof(WsTrustRequest).ToString(), CompareAllPublicProperties },
                 { typeof(WsTrustResponse).ToString(), CompareAllPublicProperties },
+                { typeof(UseKey).ToString(), CompareAllPublicProperties },
 #endif
             };
 

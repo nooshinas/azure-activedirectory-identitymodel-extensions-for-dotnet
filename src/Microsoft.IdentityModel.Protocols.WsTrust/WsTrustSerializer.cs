@@ -219,6 +219,30 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
             return requestedSecurityToken;
         }
 
+        public UseKey ReadUseKey(XmlDictionaryReader reader, WsSerializationContext serializationContext)
+        {
+            //<t:UseKey Sig="...">
+            // SecurityTokenReference - optional
+            //</t:UseKey>
+
+            bool isEmptyElement = reader.IsEmptyElement;
+            string signatureId = reader.GetAttribute(WsTrustAttributes.Sig, serializationContext.TrustConstants.Namespace);
+
+            reader.ReadStartElement();
+            UseKey useKey = new UseKey();
+
+            if (reader.IsStartElement() && reader.IsLocalName(WsSecurityElements.SecurityTokenReference))
+                useKey.SecurityTokenReference = _wsSecuritySerializer.ReadSecurityTokenReference(reader, serializationContext);
+
+            if (!string.IsNullOrEmpty(signatureId))
+                useKey.SignatureId = signatureId;
+
+            if (!isEmptyElement)
+                reader.ReadEndElement();
+
+            return useKey;
+        }
+
         public SecurityTokenReference ReadReference(XmlDictionaryReader reader, WsSerializationContext serializationContext)
         {
             //  <RequestedAttachedReference>
@@ -419,6 +443,10 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
                 {
                     trustRequest.ComputedKeyAlgorithm = XmlUtil.ReadStringElement(reader);
                 }
+                else if (reader.IsStartElement(WsTrustElements.UseKey, serializationContext.TrustConstants.Namespace))
+                {
+                    trustRequest.UseKey = ReadUseKey(reader, serializationContext);
+                }
                 else if (reader.IsLocalName(WsPolicyElements.AppliesTo))
                 {
                     foreach (var @namespace in WsPolicyConstants.KnownNamespaces)
@@ -430,7 +458,7 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
                             break;
                         }
                     }
-                   
+
                     if (!processed)
                         reader.Skip();
                 }
@@ -812,6 +840,9 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
             if (trustRequest.PolicyReference != null)
                 WritePolicyReference(writer, serializationContext, trustRequest.PolicyReference);
 
+            if (trustRequest.UseKey != null)
+                WriteUseKey(writer, serializationContext, trustRequest.UseKey);
+
             writer.WriteEndElement();
         }
 
@@ -984,6 +1015,23 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
             ValidateParamsForWritting(writer, serializationContext, securityTokenReference, nameof(securityTokenReference));
             writer.WriteStartElement(serializationContext.TrustConstants.Prefix, WsTrustElements.RequestedUnattachedReference, serializationContext.TrustConstants.Namespace);
             _wsSecuritySerializer.WriteSecurityTokenReference(writer, serializationContext, securityTokenReference);
+            writer.WriteEndElement();
+        }
+
+        public void WriteUseKey(XmlDictionaryWriter writer, WsSerializationContext serializationContext, UseKey useKey)
+        {
+            //<t:UseKey Sig="...">
+            // SecurityToken OR SecurityTokenReference
+            //</t:UseKey>
+
+            ValidateParamsForWritting(writer, serializationContext, useKey, nameof(useKey));
+            writer.WriteStartElement(serializationContext.TrustConstants.Prefix, WsTrustElements.UseKey, serializationContext.TrustConstants.Namespace);
+            if (!string.IsNullOrEmpty(useKey.SignatureId))
+                writer.WriteAttributeString(WsTrustAttributes.Sig, serializationContext.TrustConstants.Namespace, useKey.SignatureId);
+            
+            if (useKey.SecurityTokenReference != null)
+                _wsSecuritySerializer.WriteSecurityTokenReference(writer, serializationContext, useKey.SecurityTokenReference);
+
             writer.WriteEndElement();
         }
 
