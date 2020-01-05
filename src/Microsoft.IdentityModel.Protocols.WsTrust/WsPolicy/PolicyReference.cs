@@ -30,7 +30,7 @@
 namespace Microsoft.IdentityModel.Protocols.WsPolicy
 {
     /// <summary>
-    /// Defines the auth:AdditionalContext element.
+    /// Defines the wsp:PolicyReference element.
     /// </summary>
     public class PolicyReference
     {
@@ -45,11 +45,11 @@ namespace Microsoft.IdentityModel.Protocols.WsPolicy
             DigestAlgorithm = digestAlgorithm;
         }
 
-        public string Digest { get; }
+        public string Digest { get; set; }
 
-        public string DigestAlgorithm { get; }
+        public string DigestAlgorithm { get; set; }
 
 
-        public string Uri { get; }
+        public string Uri { get; set; }
     }
 }

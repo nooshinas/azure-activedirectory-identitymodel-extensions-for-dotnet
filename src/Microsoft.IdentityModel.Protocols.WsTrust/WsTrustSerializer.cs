@@ -50,6 +50,9 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
     public class WsTrustSerializer
     {
         private WsSecuritySerializer _wsSecuritySerializer = new WsSecuritySerializer();
+        private WsFedSerializer _wsFedSerializer = new WsFedSerializer();
+        private WsPolicySerializer _wsPolicySerializer = new WsPolicySerializer();
+
         internal const string GeneratedDateTimeFormat = "yyyy-MM-ddTHH:mm:ss.fffffZ";
 
         public WsTrustSerializer()
@@ -61,121 +64,28 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
             };
         }
 
-        public WsTrustResponse ReadResponse(XmlDictionaryReader reader)
+        public virtual Claims ReadClaims(XmlDictionaryReader reader, WsSerializationContext serializationContext)
         {
-            XmlUtil.CheckReaderOnEntry(reader, WsTrustElements.RequestSecurityTokenResponseCollection);
-            WsSerializationContext serializationContext;
-            if (reader.IsNamespaceUri(WsTrustConstants.Trust13.Namespace))
-                serializationContext = new WsSerializationContext(WsTrustVersion.Trust13);
-            else if (reader.IsNamespaceUri(WsTrustConstants.TrustFeb2005.Namespace))
-                serializationContext = new WsSerializationContext(WsTrustVersion.TrustFeb2005);
-            else if (reader.IsNamespaceUri(WsTrustConstants.Trust14.Namespace))
-                serializationContext = new WsSerializationContext(WsTrustVersion.Trust14);
-            else
-                throw LogHelper.LogExceptionMessage(new XmlReadException(LogHelper.FormatInvariant(LogMessages.IDX15001, WsTrustConstants.TrustFeb2005, WsTrustConstants.Trust13, WsTrustConstants.Trust14, reader.NamespaceURI)));
+            // <trust:Claims
+            //  Dialect="edef1723d88b4897a8792d2fc62f9148">
+            //      <auth:ClaimType
+            //            Uri="a14bf1a3a1894a819d9a7d3dfeb7724a">
+            //          <auth:Value>
+            //              77a6fa0404544d0887612a840e281399
+            //          </auth:Value>
+            //      </auth:ClaimType>
+            // </trust:Claims>
 
-            reader.ReadStartElement();
-            return ReadResponse(reader, serializationContext);
-        }
-
-        public WsTrustResponse ReadResponse(XmlDictionaryReader reader, WsSerializationContext serializationContext)
-        {
-            if (reader == null)
-                throw LogHelper.LogArgumentNullException(nameof(reader));
-
-            if (serializationContext == null)
-                throw LogHelper.LogArgumentNullException(nameof(serializationContext));
-
+            XmlUtil.CheckReaderOnEntry(reader, WsTrustElements.Claims, serializationContext.TrustConstants.Namespace);
             bool isEmptyElement = reader.IsEmptyElement;
-            bool hasRstrCollection = false;
-            var response = new WsTrustResponse();
-            if (reader.IsStartElement(WsTrustElements.RequestSecurityTokenResponseCollection, serializationContext.TrustConstants.Namespace))
-            {
-                reader.ReadStartElement();
-                hasRstrCollection = true;
-            }
-
+            var dialect = reader.GetAttribute(WsTrustAttributes.Dialect);
+            reader.ReadStartElement();
+            var claimTypes = new List<ClaimType>();
             while (reader.IsStartElement())
             {
-                if (reader.IsStartElement(WsTrustElements.RequestSecurityTokenResponse, serializationContext.TrustConstants.Namespace))
-                    response.RequestSecurityTokenResponseCollection.Add(ReadResponseInternal(reader, serializationContext));
-                else
-                    // brentsch - need to put these elements in array
-                    reader.Skip();
-            }
-
-            if (!isEmptyElement && hasRstrCollection)
-                    reader.ReadEndElement();
-
-            return response;
-        }
-
-        public RequestSecurityTokenResponse ReadRequestSeurityTokenResponse(XmlDictionaryReader reader, WsSerializationContext serializationContext)
-        {
-            XmlUtil.CheckReaderOnEntry(reader, WsTrustElements.RequestSecurityTokenResponse, serializationContext.TrustConstants.Namespace);
-            return ReadResponseInternal(reader, serializationContext);
-        }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="reader"></param>
-        /// <param name="serializationContext"></param>
-        /// <returns></returns>
-        public RequestSecurityTokenResponse ReadResponseInternal(XmlDictionaryReader reader, WsSerializationContext serializationContext)
-        {
-            bool isEmptyElement = reader.IsEmptyElement;
-            var tokenResponse = new RequestSecurityTokenResponse();
-            bool processed = false;
-            reader.ReadStartElement();
-            while (reader.IsStartElement())
-            {
-                if (reader.IsStartElement(WsTrustElements.TokenType, serializationContext.TrustConstants.Namespace))
+                if (reader.IsLocalName(WsFedElements.ClaimType))
                 {
-                    tokenResponse.TokenType = XmlUtil.ReadStringElement(reader);
-                }
-                else if (reader.IsStartElement(WsTrustElements.Lifetime, serializationContext.TrustConstants.Namespace))
-                {
-                    tokenResponse.Lifetime = ReadLifetime(reader, serializationContext);
-                }
-                else if (reader.IsStartElement(WsTrustElements.KeyType, serializationContext.TrustConstants.Namespace))
-                {
-                    tokenResponse.KeyType = XmlUtil.ReadStringElement(reader);
-                }
-                else if (reader.IsStartElement(WsTrustElements.RequestedSecurityToken, serializationContext.TrustConstants.Namespace))
-                {
-                    tokenResponse.RequestedSecurityToken = ReadRequestedSecurityToken(reader, serializationContext);
-                }
-                else if (reader.IsStartElement(WsTrustElements.RequestedAttachedReference, serializationContext.TrustConstants.Namespace))
-                {
-                    tokenResponse.AttachedReference = ReadReference(reader, serializationContext);
-                }
-                else if (reader.IsStartElement(WsTrustElements.RequestedUnattachedReference, serializationContext.TrustConstants.Namespace))
-                {
-                    tokenResponse.UnattachedReference = ReadReference(reader, serializationContext);
-                }
-                else if (reader.IsStartElement(WsTrustElements.RequestedProofToken, serializationContext.TrustConstants.Namespace))
-                {
-                    tokenResponse.RequestedProofToken = ReadRequestedProofToken(reader, serializationContext);
-                }
-                else if (reader.IsStartElement(WsTrustElements.Entropy, serializationContext.TrustConstants.Namespace))
-                {
-                    tokenResponse.Entropy = ReadEntropy(reader, serializationContext);
-                }
-                else if (reader.IsLocalName(WsPolicyElements.AppliesTo))
-                {
-                    foreach (var @namespace in WsPolicyConstants.KnownNamespaces)
-                    {
-                        if (reader.IsNamespaceUri(@namespace))
-                        {
-                            tokenResponse.AppliesTo = ReadAppliesTo(reader, @namespace);
-                            processed = true;
-                            break;
-                        }
-                    }
-
-                    if (!processed)
-                        reader.Skip();
+                    claimTypes.Add(_wsFedSerializer.ReadClaimType(reader, serializationContext.FedConstants.AuthNamespace));
                 }
                 else
                 {
@@ -186,151 +96,23 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
             if (!isEmptyElement)
                 reader.ReadEndElement();
 
-            return tokenResponse;
-        }
-
-        public RequestedSecurityToken ReadRequestedSecurityToken(XmlDictionaryReader reader, WsSerializationContext serializationContext)
-        {
-            XmlUtil.CheckReaderOnEntry(reader, WsTrustElements.RequestedSecurityToken);
-            bool isEmptyElement = reader.IsEmptyElement;
-            bool wasTokenRead = false;
-            reader.ReadStartElement();
-            reader.MoveToContent();
-            RequestedSecurityToken requestedSecurityToken = new RequestedSecurityToken();
-            foreach (var tokenHandler in SecurityTokenHandlers)
-            {
-                // brentsch - TODO need to remember value if handler can't be found.
-                // perhaps add delegate?
-                if (tokenHandler.CanReadToken(reader))
-                {
-                    requestedSecurityToken = new RequestedSecurityToken(tokenHandler.ReadToken(reader));
-                    wasTokenRead = true;
-                    break;
-                }
-            }
-
-            // brentsch - TODO TEST
-            if (!wasTokenRead && !isEmptyElement)
-                reader.Skip();
-
-            if (!isEmptyElement)
-                reader.ReadEndElement();
-
-            return requestedSecurityToken;
-        }
-
-        public UseKey ReadUseKey(XmlDictionaryReader reader, WsSerializationContext serializationContext)
-        {
-            //<t:UseKey Sig="...">
-            // SecurityTokenReference - optional
-            //</t:UseKey>
-
-            bool isEmptyElement = reader.IsEmptyElement;
-            string signatureId = reader.GetAttribute(WsTrustAttributes.Sig, serializationContext.TrustConstants.Namespace);
-
-            reader.ReadStartElement();
-            UseKey useKey = new UseKey();
-
-            if (reader.IsStartElement() && reader.IsLocalName(WsSecurityElements.SecurityTokenReference))
-                useKey.SecurityTokenReference = _wsSecuritySerializer.ReadSecurityTokenReference(reader, serializationContext);
-
-            if (!string.IsNullOrEmpty(signatureId))
-                useKey.SignatureId = signatureId;
-
-            if (!isEmptyElement)
-                reader.ReadEndElement();
-
-            return useKey;
-        }
-
-        public SecurityTokenReference ReadReference(XmlDictionaryReader reader, WsSerializationContext serializationContext)
-        {
-            //  <RequestedAttachedReference>
-            //      <wsse:SecurityTokenReference ...>
-            //          ...
-            //      </wsse:SecurityTokenReference ...>
-            //  </RequestedAttachedReference>
-
-            //  <RequestedUnattachedReference>
-            //      <wsse:SecurityTokenReference ...>
-            //          ...
-            //      </wsse:SecurityTokenReference ...>
-            //  </RequestedUnattachedReference>
-
-            bool isEmptyElement = reader.IsEmptyElement;
-            reader.ReadStartElement();
-            var retVal = _wsSecuritySerializer.ReadSecurityTokenReference(reader, serializationContext);
-
-            if (!isEmptyElement)
-                reader.ReadEndElement();
-
-            return retVal;
-        }
-
-        public RequestedProofToken ReadRequestedProofToken(XmlDictionaryReader reader, WsSerializationContext serializationContext)
-        {
-            //<wst:RequestedProofToken>
-            //    <wst:BinarySecret>5p76ToaxZXMFm4W6fmCcFXfDPd9WgJIM</wst:BinarySecret>
-            //</wst:RequestedProofToken>
-
-            XmlUtil.CheckReaderOnEntry(reader, WsTrustElements.RequestedProofToken, serializationContext.TrustConstants.Namespace);
-            var isEmptyElement = reader.IsEmptyElement;
-            reader.ReadStartElement();
-            BinarySecret binarySecret = null;
-            if (reader.IsStartElement(WsTrustElements.BinarySecret, serializationContext.TrustConstants.Namespace))
-            {
-                if (reader.IsEmptyElement)
-                    // brentsch - TODO, error message
-                    throw LogHelper.LogExceptionMessage(new WsTrustReadException("BinarySecret is empty element"));
-
-                var type = reader.GetAttribute(WsTrustAttributes.Type, serializationContext.TrustConstants.Namespace);
-                var data = reader.ReadContentAsBase64();
-
-                if (!string.IsNullOrEmpty(type) && data != null)
-                    binarySecret = new BinarySecret(data, type);
-                else if (data != null)
-                    binarySecret = new BinarySecret(data);
-                else
-                    // brentsch - TODO, error message
-                    throw LogHelper.LogExceptionMessage(new WsTrustReadException("BinarySecret missing"));
-            }
-            else
-            {
-                // brentsch - TODO, test for empty element
-                reader.Skip();
-            }
-
-            // brentsch - TODO, add additional scenarios for Requested proof token;
-            RequestedProofToken proofToken = null;
-            if (binarySecret != null)
-                proofToken = new RequestedProofToken(binarySecret);
-            else
-                LogHelper.LogExceptionMessage(new WsTrustReadException("The only Supported scenario is: BinarySecret in Requested Proof token"));
-
-            if (!isEmptyElement)
-                reader.ReadEndElement();
-
-            return proofToken;
+            return new Claims(dialect, claimTypes);
         }
 
         public Entropy ReadEntropy(XmlDictionaryReader reader, WsSerializationContext serializationContext)
         {
-            //  <wst:Entropy>
-            //      <wst:BinarySecret>
+            //  <t:Entropy>
+            //      <t:BinarySecret>
             //          ...
-            //      </wst:BinarySecret>
-            //  </wst:Entropy>
+            //      </t:BinarySecret>
+            //  </t:Entropy>
 
             XmlUtil.CheckReaderOnEntry(reader, WsTrustElements.Entropy, serializationContext.TrustConstants.Namespace);
             bool isEmptyElement = reader.IsEmptyElement;
             reader.ReadStartElement();
             var entropy = new Entropy();
             if (reader.IsStartElement(WsTrustElements.BinarySecret, serializationContext.TrustConstants.Namespace))
-            {
-                var type = reader.GetAttribute(WsTrustAttributes.Type, serializationContext.TrustConstants.Namespace);
-                var secrect = reader.ReadElementContentAsBase64();
-                entropy.BinarySecret = new BinarySecret(secrect, type);
-            }
+                entropy.BinarySecret = ReadBinarySecrect(reader, serializationContext);
 
             if (!isEmptyElement)
                 reader.ReadEndElement();
@@ -362,10 +144,78 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
             return lifetime;
         }
 
+        public virtual SecurityToken ReadOnBehalfOf(XmlDictionaryReader reader)
+        {
+            reader.MoveToContent();
+            bool isEmptyElement = reader.IsEmptyElement;
+            reader.ReadStartElement();
+            foreach (var tokenHandler in SecurityTokenHandlers)
+            {
+                if (tokenHandler.CanReadToken(reader))
+                {
+                    var token = tokenHandler.ReadToken(reader);
+                    if (!isEmptyElement)
+                        reader.ReadEndElement();
+
+                    return token;
+                }
+            }
+
+            // brentsch - TODO localize error message
+            throw LogHelper.LogExceptionMessage(new WsTrustReadException("unable to read token"));
+        }
+
+        internal BinarySecret ReadBinarySecrect(XmlDictionaryReader reader, WsSerializationContext serializationContext)
+        {
+            //  <t:BinarySecret Type="...">
+            //      ...
+            //  </t:BinarySecret>
+
+            var binarySecret = new BinarySecret();
+            if (!reader.IsEmptyElement)
+            {
+                var attributes = XmlAttributeHolder.ReadAttributes(reader);
+                binarySecret.Type = XmlAttributeHolder.GetAttribute(attributes, WsTrustAttributes.Type, serializationContext.TrustConstants.Namespace);
+
+                reader.ReadStartElement();
+                var data = reader.ReadContentAsBase64();
+                if (data != null)
+                    binarySecret.Data = data;
+
+                reader.ReadEndElement();
+            }
+
+            return binarySecret;
+        }
+
+        public SecurityTokenReference ReadReference(XmlDictionaryReader reader, WsSerializationContext serializationContext)
+        {
+            //  <t:RequestedAttachedReference>
+            //      <wsse:SecurityTokenReference ...>
+            //          ...
+            //      </wsse:SecurityTokenReference ...>
+            //  </t:RequestedAttachedReference>
+
+            //  <t:RequestedUnattachedReference>
+            //      <wsse:SecurityTokenReference ...>
+            //          ...
+            //      </wsse:SecurityTokenReference ...>
+            //  </t:RequestedUnattachedReference>
+
+            bool isEmptyElement = reader.IsEmptyElement;
+            reader.ReadStartElement();
+            var retVal = _wsSecuritySerializer.ReadSecurityTokenReference(reader, serializationContext);
+
+            if (!isEmptyElement)
+                reader.ReadEndElement();
+
+            return retVal;
+        }
+
         public WsTrustRequest ReadRequest(XmlDictionaryReader reader)
         {
             XmlUtil.CheckReaderOnEntry(reader, WsTrustElements.RequestSecurityToken);
-            reader.MoveToContent();
+
             WsSerializationContext serializationContext;
             if (reader.IsNamespaceUri(WsTrustConstants.Trust13.Namespace))
                 serializationContext = new WsSerializationContext(WsTrustVersion.Trust13);
@@ -376,9 +226,10 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
             else
                 throw LogHelper.LogExceptionMessage(new XmlReadException(LogHelper.FormatInvariant(LogMessages.IDX15001, WsTrustConstants.TrustFeb2005, WsTrustConstants.Trust13, WsTrustConstants.Trust14, reader.NamespaceURI)));
 
+            var xmlAttributes = XmlAttributeHolder.ReadAttributes(reader);
             var trustRequest = new WsTrustRequest
             {
-                Context = reader.GetAttribute(WsTrustAttributes.Context)
+                Context = XmlAttributeHolder.GetAttribute(xmlAttributes, WsTrustAttributes.Context, serializationContext.TrustConstants.Namespace)
             };
 
             reader.MoveToContent();
@@ -392,7 +243,7 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
         public WsTrustRequest ReadRequest(XmlDictionaryReader reader, WsSerializationContext serializationContext, WsTrustRequest trustRequest)
         {
             // brentsch - TODO, PERF - create a collection of strings assuming only single elements
- 
+
             if (reader == null)
                 throw LogHelper.LogArgumentNullException(nameof(reader));
 
@@ -453,7 +304,7 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
                     {
                         if (reader.IsNamespaceUri(@namespace))
                         {
-                            trustRequest.AppliesTo = ReadAppliesTo(reader, @namespace);
+                            trustRequest.AppliesTo = _wsPolicySerializer.ReadAppliesTo(reader, @namespace);
                             processed = true;
                             break;
                         }
@@ -468,7 +319,7 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
                     {
                         if (reader.IsNamespaceUri(@namespace))
                         {
-                            trustRequest.AdditionalContext = ReadAdditionalContext(reader, @namespace);
+                            trustRequest.AdditionalContext = _wsFedSerializer.ReadAdditionalContext(reader, @namespace);
                             processed = true;
                             break;
                         }
@@ -483,15 +334,7 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
                 }
                 else if (reader.IsLocalName(WsPolicyElements.PolicyReference))
                 {
-                    foreach (var @namespace in WsPolicyConstants.KnownNamespaces)
-                    {
-                        if (reader.IsNamespaceUri(@namespace))
-                        {
-                            trustRequest.PolicyReference = ReadPolicyReference(reader, @namespace);
-                            processed = true;
-                            break;
-                        }
-                    }
+                    trustRequest.PolicyReference = _wsPolicySerializer.ReadPolicyReference(reader, serializationContext.PolicyConstants.Namespace);
                 }
                 else
                 {
@@ -505,127 +348,171 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
             return trustRequest;
         }
 
-        /// <summary>
-        /// 
-        /// </summary>
-        public virtual AdditionalContext ReadAdditionalContext(XmlDictionaryReader reader, string @namespace)
+        public RequestedProofToken ReadRequestedProofToken(XmlDictionaryReader reader, WsSerializationContext serializationContext)
         {
-            //  <auth:AdditionalContext xmlns:auth="http://docs.oasis-open.org/wsfed/authorization/200706">
-            //    <auth:ContextItem Name="http://referenceUri" Scope="8954b59e-3907-4939-976d-959395583ecb">
-            //      <auth:Value>90b88c42-55ca-4e4c-a45f-cde102383f3b</auth:Value>
-            //    </auth:ContextItem>
-            //  </auth:AdditionalContext>
+            //  <t:RequestedProofToken>
+            //      <t:BinarySecret>
+            //          5p76ToaxZXMFm4W6fmCcFXfDPd9WgJIM
+            //      </t:BinarySecret>
+            //  </t:RequestedProofToken>
+            // brentsch - TODO, add additional scenarios for Requested proof token;
 
-            XmlUtil.CheckReaderOnEntry(reader, WsFedElements.AdditionalContext);
-            var additionalContext = new AdditionalContext();
-            if (reader.IsEmptyElement)
-                return additionalContext;
+            XmlUtil.CheckReaderOnEntry(reader, WsTrustElements.RequestedProofToken, serializationContext.TrustConstants.Namespace);
+            var isEmptyElement = reader.IsEmptyElement;
+            reader.ReadStartElement();
 
-            // brentsch - TODO, this is an open spec, we are skipping all unknown attributes.
+            var proofToken = new RequestedProofToken();
+            if (reader.IsStartElement(WsTrustElements.BinarySecret, serializationContext.TrustConstants.Namespace))
+                proofToken.BinarySecret = ReadBinarySecrect(reader, serializationContext);
+
+            if (!isEmptyElement)
+                reader.ReadEndElement();
+
+            return proofToken;
+        }
+
+        public RequestedSecurityToken ReadRequestedSecurityToken(XmlDictionaryReader reader, WsSerializationContext serializationContext)
+        {
+            XmlUtil.CheckReaderOnEntry(reader, WsTrustElements.RequestedSecurityToken);
+            bool isEmptyElement = reader.IsEmptyElement;
+            bool wasTokenRead = false;
             reader.ReadStartElement();
             reader.MoveToContent();
-            try
+            RequestedSecurityToken requestedSecurityToken = new RequestedSecurityToken();
+            foreach (var tokenHandler in SecurityTokenHandlers)
             {
-                while (reader.IsStartElement())
+                // brentsch - TODO need to remember value if handler can't be found.
+                // perhaps add delegate?
+                if (tokenHandler.CanReadToken(reader))
                 {
-                    // brentsch - TODO, need to account for namespace
-                    if (!reader.IsEmptyElement && reader.IsStartElement(WsFedElements.ContextItem, @namespace))
-                    {
-                        var name = reader.GetAttribute(WsFedAttributes.Name);
-                        if (string.IsNullOrEmpty(name))
-                            throw LogHelper.LogExceptionMessage(new XmlReadException(LogHelper.FormatInvariant(Xml.LogMessages.IDX30013, WsFedElements.ContextItem, WsFedAttributes.Name)));
-
-                        var contextItem = new ContextItem(name);
-                        contextItem.Scope = reader.GetAttribute(WsFedAttributes.Scope);
-                        reader.ReadStartElement();
-                        reader.MoveToContent();
-                        if (!reader.IsEmptyElement && reader.IsStartElement(WsFedElements.Value, @namespace))
-                        {
-                            reader.ReadStartElement();
-                            contextItem.Value = reader.ReadContentAsString();
-                            reader.MoveToContent();
-                            reader.ReadEndElement();
-                        }
-                        else
-                        {
-                            reader.Skip();
-                        }
-
-                        // </ContextItem>
-                        reader.ReadEndElement();
-                        additionalContext.Items.Add(contextItem);
-                    }
-                    else
-                    {
-                        reader.Skip();
-                    }
-
-                    reader.MoveToContent();
+                    requestedSecurityToken = new RequestedSecurityToken(tokenHandler.ReadToken(reader));
+                    wasTokenRead = true;
+                    break;
                 }
             }
-            catch (Exception ex)
-            {
-                throw LogHelper.LogExceptionMessage(new XmlReadException(LogHelper.FormatInvariant(Xml.LogMessages.IDX30016, WsFedElements.ContextItem), ex));
-            }
 
-            // </AdditionalContext>
-            reader.ReadEndElement();
-            return additionalContext;
-        }
-
-        /// <summary>
-        ///
-        /// </summary>
-        /// <param name="reader">The xml dictionary reader.</param>
-        /// <param name="namespace"></param>
-        /// <returns>An <see cref="EndpointReference"/> instance.</returns>
-        public virtual AppliesTo ReadAppliesTo(XmlDictionaryReader reader, string @namespace)
-        {
-            XmlUtil.CheckReaderOnEntry(reader, WsPolicyElements.AppliesTo, @namespace);
-
-            // brentsch - TODO, TESTCASE
-            if (reader.IsEmptyElement)
-            {
+            // brentsch - TODO TEST
+            if (!wasTokenRead && !isEmptyElement)
                 reader.Skip();
-                return new AppliesTo();
-            }
 
-            reader.ReadStartElement();
-            var appliesTo = new AppliesTo { EndpointReference = ReadEndpointReference(reader) };
-            reader.ReadEndElement();
+            if (!isEmptyElement)
+                reader.ReadEndElement();
 
-            return appliesTo;
+            return requestedSecurityToken;
         }
 
-        public virtual Claims ReadClaims(XmlDictionaryReader reader, WsSerializationContext serializationContext)
+        public RequestSecurityTokenResponse ReadRequestSeurityTokenResponse(XmlDictionaryReader reader, WsSerializationContext serializationContext)
         {
-            // brensch - TODO WsFedSerializer?
-            // <trust:Claims 
-            //  Dialect="edef1723d88b4897a8792d2fc62f9148">
-            //      <auth:ClaimType 
-            //            Uri="a14bf1a3a1894a819d9a7d3dfeb7724a">
-            //          <auth:Value>
-            //              77a6fa0404544d0887612a840e281399
-            //          </auth:Value>
-            //      </auth:ClaimType>
-            // </trust:Claims>
+            XmlUtil.CheckReaderOnEntry(reader, WsTrustElements.RequestSecurityTokenResponse, serializationContext.TrustConstants.Namespace);
+            return ReadResponseInternal(reader, serializationContext);
+        }
 
-            XmlUtil.CheckReaderOnEntry(reader, WsTrustElements.Claims, serializationContext.TrustConstants.Namespace);
+        public WsTrustResponse ReadResponse(XmlDictionaryReader reader)
+        {
+            if (reader == null)
+                throw LogHelper.LogArgumentNullException(nameof(reader));
+
+            reader.MoveToContent();
+
+            WsSerializationContext serializationContext;
+            if (reader.IsNamespaceUri(WsTrustConstants.Trust13.Namespace))
+                serializationContext = new WsSerializationContext(WsTrustVersion.Trust13);
+            else if (reader.IsNamespaceUri(WsTrustConstants.TrustFeb2005.Namespace))
+                serializationContext = new WsSerializationContext(WsTrustVersion.TrustFeb2005);
+            else if (reader.IsNamespaceUri(WsTrustConstants.Trust14.Namespace))
+                serializationContext = new WsSerializationContext(WsTrustVersion.Trust14);
+            else
+                throw LogHelper.LogExceptionMessage(new XmlReadException(LogHelper.FormatInvariant(LogMessages.IDX15001, WsTrustConstants.TrustFeb2005, WsTrustConstants.Trust13, WsTrustConstants.Trust14, reader.NamespaceURI)));
+
+            return ReadResponse(reader, serializationContext);
+        }
+
+        public WsTrustResponse ReadResponse(XmlDictionaryReader reader, WsSerializationContext serializationContext)
+        {
+            if (reader == null)
+                throw LogHelper.LogArgumentNullException(nameof(reader));
+
+            if (serializationContext == null)
+                throw LogHelper.LogArgumentNullException(nameof(serializationContext));
+
             bool isEmptyElement = reader.IsEmptyElement;
-            var dialect = reader.GetAttribute(WsTrustAttributes.Dialect);
-            reader.ReadStartElement();
-            var claimTypes = new List<ClaimType>();
+            bool hasRstrCollection = false;
+            var response = new WsTrustResponse();
+            if (reader.IsStartElement(WsTrustElements.RequestSecurityTokenResponseCollection, serializationContext.TrustConstants.Namespace))
+            {
+                reader.ReadStartElement();
+                hasRstrCollection = true;
+            }
+
             while (reader.IsStartElement())
             {
-                if (reader.IsLocalName(WsFedElements.ClaimType))
+                if (reader.IsStartElement(WsTrustElements.RequestSecurityTokenResponse, serializationContext.TrustConstants.Namespace))
+                    response.RequestSecurityTokenResponseCollection.Add(ReadResponseInternal(reader, serializationContext));
+                else
+                    // brentsch - need to put these elements in array
+                    reader.Skip();
+            }
+
+            if (!isEmptyElement && hasRstrCollection)
+                reader.ReadEndElement();
+
+            return response;
+        }
+
+        internal RequestSecurityTokenResponse ReadResponseInternal(XmlDictionaryReader reader, WsSerializationContext serializationContext)
+        {
+            bool isEmptyElement = reader.IsEmptyElement;
+            var tokenResponse = new RequestSecurityTokenResponse();
+            bool processed = false;
+            reader.ReadStartElement();
+            while (reader.IsStartElement())
+            {
+                if (reader.IsStartElement(WsTrustElements.TokenType, serializationContext.TrustConstants.Namespace))
                 {
-                    foreach (var @namespace in WsFed12Constants.KnownAuthNamespaces)
+                    tokenResponse.TokenType = XmlUtil.ReadStringElement(reader);
+                }
+                else if (reader.IsStartElement(WsTrustElements.Lifetime, serializationContext.TrustConstants.Namespace))
+                {
+                    tokenResponse.Lifetime = ReadLifetime(reader, serializationContext);
+                }
+                else if (reader.IsStartElement(WsTrustElements.KeyType, serializationContext.TrustConstants.Namespace))
+                {
+                    tokenResponse.KeyType = XmlUtil.ReadStringElement(reader);
+                }
+                else if (reader.IsStartElement(WsTrustElements.RequestedSecurityToken, serializationContext.TrustConstants.Namespace))
+                {
+                    tokenResponse.RequestedSecurityToken = ReadRequestedSecurityToken(reader, serializationContext);
+                }
+                else if (reader.IsStartElement(WsTrustElements.RequestedAttachedReference, serializationContext.TrustConstants.Namespace))
+                {
+                    tokenResponse.AttachedReference = ReadReference(reader, serializationContext);
+                }
+                else if (reader.IsStartElement(WsTrustElements.RequestedUnattachedReference, serializationContext.TrustConstants.Namespace))
+                {
+                    tokenResponse.UnattachedReference = ReadReference(reader, serializationContext);
+                }
+                else if (reader.IsStartElement(WsTrustElements.RequestedProofToken, serializationContext.TrustConstants.Namespace))
+                {
+                    tokenResponse.RequestedProofToken = ReadRequestedProofToken(reader, serializationContext);
+                }
+                else if (reader.IsStartElement(WsTrustElements.Entropy, serializationContext.TrustConstants.Namespace))
+                {
+                    tokenResponse.Entropy = ReadEntropy(reader, serializationContext);
+                }
+                else if (reader.IsLocalName(WsPolicyElements.AppliesTo))
+                {
+                    foreach (var @namespace in WsPolicyConstants.KnownNamespaces)
                     {
                         if (reader.IsNamespaceUri(@namespace))
                         {
-                            claimTypes.Add(ReadClaimType(reader, @namespace));
+                            tokenResponse.AppliesTo = _wsPolicySerializer.ReadAppliesTo(reader, @namespace);
+                            processed = true;
+                            break;
                         }
                     }
+
+                    if (!processed)
+                        reader.Skip();
                 }
                 else
                 {
@@ -636,152 +523,137 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
             if (!isEmptyElement)
                 reader.ReadEndElement();
 
-            return new Claims(dialect, claimTypes);
+            return tokenResponse;
         }
 
-        /// <summary>
-        /// Creates and populates a <see cref="ClaimType"/> by reading xml.
-        /// Expects the <see cref="XmlDictionaryReader"/> to be positioned on the StartElement: "ClaimType" in the namespace passed in.
-        /// </summary>
-        /// <param name="reader">a <see cref="XmlDictionaryReader"/> positioned at the StartElement: "ClaimType".</param>
-        /// <param name="namespace">the namespace for the StartElement.</param>
-        /// <returns>a populated <see cref="ClaimType"/>.</returns>
-        /// <remarks>Checking for the correct StartElement is as follows.</remarks>
-        /// <remarks>if @namespace is null, then <see cref="XmlDictionaryReader.IsLocalName(string)"/> will be called.</remarks>
-        /// <remarks>if @namespace is not null or empty, then <see cref="XmlDictionaryReader.IsStartElement(XmlDictionaryString, XmlDictionaryString)"/> will be called.></remarks>
-        /// <exception cref="ArgumentNullException">if reader is null.</exception>
-        /// <exception cref="XmlReadException">if reader is not positioned on a StartElement.</exception>
-        /// <exception cref="XmlReadException">if the StartElement does not match the expectations in remarks.</exception>
-        public virtual ClaimType ReadClaimType(XmlDictionaryReader reader, string @namespace)
+        public UseKey ReadUseKey(XmlDictionaryReader reader, WsSerializationContext serializationContext)
         {
-            // <auth:ClaimType 
-            //      Uri="a14bf1a3-a189-4a81-9d9a-7d3dfeb7724a"
-            //      Optional="true/false">
-            //   <auth:Value>
-            //      77a6fa04-0454-4d08-8761-2a840e281399
-            //   </auth:Value>
-            // </auth:ClaimType>
+            //  <t:UseKey Sig="...">
+            //      SecurityTokenReference - optional
+            //  </t:UseKey>
 
-            XmlUtil.CheckReaderOnEntry(reader, WsFedElements.ClaimType, @namespace);
-            var uri = reader.GetAttribute(WsFedAttributes.Uri);
-            if (string.IsNullOrEmpty(uri))
-                throw LogHelper.LogExceptionMessage(new XmlReadException(LogHelper.FormatInvariant(Xml.LogMessages.IDX30013, WsFedElements.ContextItem, WsFedAttributes.Name)));
-
-            var optionalAttribute = reader.GetAttribute(WsFedAttributes.Optional);
-            bool? optional = null;
-            if (!string.IsNullOrEmpty(optionalAttribute))
-                optional = XmlConvert.ToBoolean(optionalAttribute);
-
-            string value = null;
             bool isEmptyElement = reader.IsEmptyElement;
-            reader.ReadStartElement();
-            reader.MoveToContent();
+            var attributes = XmlAttributeHolder.ReadAttributes(reader);
+            string signatureId = XmlAttributeHolder.GetAttribute(attributes, WsTrustAttributes.Sig, serializationContext.TrustConstants.Namespace);
 
-            // brentsch - TODO, need loop for multiple elements
-            if (reader.IsStartElement(WsFedElements.Value, @namespace))
-                value = XmlUtil.ReadStringElement(reader);
+            reader.ReadStartElement();
+            UseKey useKey = new UseKey();
+
+            if (reader.IsStartElement() && reader.IsLocalName(WsSecurityElements.SecurityTokenReference))
+                useKey.SecurityTokenReference = _wsSecuritySerializer.ReadSecurityTokenReference(reader, serializationContext);
+
+            if (!string.IsNullOrEmpty(signatureId))
+                useKey.SignatureId = signatureId;
 
             if (!isEmptyElement)
                 reader.ReadEndElement();
 
-            // brentsch - TODO, TESTCASE
-            if (optional.HasValue && !string.IsNullOrEmpty(value))
-                return new ClaimType { Uri = uri, IsOptional = optional, Value = value };
-            else if (optional.HasValue)
-                return new ClaimType { Uri = uri, IsOptional = optional };
-            else if (!string.IsNullOrEmpty(value))
-                return new ClaimType { Uri = uri, Value = value };
-
-            return new ClaimType { Uri = uri };
-        }
-
-        /// <summary>
-        /// Reads an <see cref="EndpointReference"/>
-        /// </summary>
-        /// <param name="reader">The xml dictionary reader.</param>
-        /// <returns>An <see cref="EndpointReference"/> instance.</returns>
-        public virtual EndpointReference ReadEndpointReference(XmlDictionaryReader reader)
-        {
-            XmlUtil.CheckReaderOnEntry(reader, WsAddressingElements.EndpointReference);
-            
-            reader.MoveToContent();
-            foreach(var @namespace in WsAddressingConstants.KnownNamespaces)
-            {
-                if (reader.IsNamespaceUri(@namespace))
-                {
-                    bool isEmptyElement = reader.IsEmptyElement;
-                    reader.ReadStartElement();
-                    var endpointReference = new EndpointReference(reader.ReadElementContentAsString());
-                    while (reader.IsStartElement())
-                    {
-                        bool isInnerEmptyElement = reader.IsEmptyElement;
-                        var subtreeReader = reader.ReadSubtree();
-                        var doc = new XmlDocument
-                        {
-                            PreserveWhitespace = true
-                        };
-
-                        doc.Load(subtreeReader);
-                        endpointReference.AdditionalXmlElements.Add(doc.DocumentElement);
-                        if (!isInnerEmptyElement)
-                            reader.ReadEndElement();
-                    }
-
-                    if (!isEmptyElement)
-                        reader.ReadEndElement();
-
-                    return endpointReference;
-                }
-            }
-
-            throw LogHelper.LogExceptionMessage(new XmlReadException(LogHelper.FormatInvariant(LogMessages.IDX15002, WsAddressingElements.EndpointReference, WsAddressingConstants.Addressing200408.Namespace, WsAddressingConstants.Addressing10.Namespace, reader.NamespaceURI)));
-        }
-
-        public virtual SecurityToken ReadOnBehalfOf(XmlDictionaryReader reader)
-        {
-            reader.MoveToContent();
-            bool isEmptyElement = reader.IsEmptyElement;
-            reader.ReadStartElement();
-            foreach (var tokenHandler in SecurityTokenHandlers)
-            {
-                if (tokenHandler.CanReadToken(reader))
-                {
-                    var token = tokenHandler.ReadToken(reader);
-                    if (!isEmptyElement)
-                        reader.ReadEndElement();
-
-                    return token;
-                }
-            }
-
-            // brentsch - TODO localize error message
-            throw LogHelper.LogExceptionMessage(new WsTrustReadException("unable to read token"));
-        }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="reader"></param>
-        /// <param name="namespace"></param>
-        public virtual PolicyReference ReadPolicyReference(XmlDictionaryReader reader, string @namespace)
-        {
-            // brentsch - TODO, if this was private, we wouldn't need to check as much
-            XmlUtil.CheckReaderOnEntry(reader, WsPolicyElements.PolicyReference, @namespace);
-
-            bool isEmptyElement = reader.IsEmptyElement;
-            var uri = reader.GetAttribute(WsPolicyAttributes.URI);
-            var digest = reader.GetAttribute(WsPolicyAttributes.Digest);
-            var digestAlgorithm = reader.GetAttribute(WsPolicyAttributes.DigestAlgorithm);
-            reader.ReadStartElement();
-            reader.MoveToContent();
-
-            if (!isEmptyElement)
-                reader.ReadEndElement();
-
-            return new PolicyReference(uri, digest, digestAlgorithm);
+            return useKey;
         }
 
         public ICollection<SecurityTokenHandler> SecurityTokenHandlers { get; private set; }
+
+        public void WriteAttachedReference(XmlDictionaryWriter writer, WsSerializationContext serializationContext, SecurityTokenReference securityTokenReference)
+        {
+            //  <t:RequestedAttachedReference>
+            //      <SecurityTokenReference d3p1:TokenType="http://docs.oasis-open.org/wss/oasis-wss-saml-token-profile-1.1#SAMLV2.0" xmlns:d3p1=""http://docs.oasis-open.org/wss/oasis-wss-wssecurity-secext-1.1.xsd"" xmlns=""http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd"">
+            //          <KeyIdentifier ValueType="http://docs.oasis-open.org/wss/oasis-wss-saml-token-profile-1.1#SAMLID">_edc15efd-1117-4bf9-89da-28b1663fb890</KeyIdentifier>
+            //      </SecurityTokenReference>
+            //  </t:RequestedAttachedReference>
+
+            WsUtils.ValidateParamsForWritting(writer, serializationContext, securityTokenReference, nameof(securityTokenReference));
+            writer.WriteStartElement(serializationContext.TrustConstants.Prefix, WsTrustElements.RequestedAttachedReference, serializationContext.TrustConstants.Namespace);
+            _wsSecuritySerializer.WriteSecurityTokenReference(writer, serializationContext, securityTokenReference);
+            writer.WriteEndElement();
+        }
+
+        public void WriteBinarySecret(XmlDictionaryWriter writer, WsSerializationContext serializationContext, BinarySecret binarySecret)
+        {
+            //  <t:BinarySecret Type="...">
+            //      ...
+            //  </t:BinarySecret>
+
+            WsUtils.ValidateParamsForWritting(writer, serializationContext, binarySecret, nameof(binarySecret));
+            writer.WriteStartElement(serializationContext.TrustConstants.Prefix, WsTrustElements.BinarySecret, serializationContext.TrustConstants.Namespace);
+            if (!string.IsNullOrEmpty(binarySecret.Type))
+                writer.WriteAttributeString(WsTrustAttributes.Type, serializationContext.TrustConstants.Namespace, binarySecret.Type);
+
+            writer.WriteBase64(binarySecret.Data, 0, binarySecret.Data.Length);
+            writer.WriteEndElement();
+        }
+        
+        public void WriteClaims(XmlDictionaryWriter writer, WsSerializationContext serializationContext, Claims claims)
+        {
+            //  <t:Claims Dialect="...">
+            //    ...
+            //  </t:Claims>
+
+            WsUtils.ValidateParamsForWritting(writer, serializationContext, claims, nameof(claims));
+            writer.WriteStartElement(serializationContext.TrustConstants.Prefix, WsTrustElements.Claims, serializationContext.TrustConstants.Namespace);
+            if (!string.IsNullOrEmpty(claims.Dialect))
+                writer.WriteAttributeString(WsTrustAttributes.Dialect, claims.Dialect);
+
+            foreach (var claimType in claims.ClaimTypes)
+                _wsFedSerializer.WriteClaimType(writer, serializationContext, claimType);
+
+            writer.WriteEndElement();
+        }
+
+        public void WriteEntropy(XmlDictionaryWriter writer, WsSerializationContext serializationContext, Entropy entropy)
+        {
+            //  <t:Entropy>
+            //      ...
+            //  </t:Entropy>
+
+            WsUtils.ValidateParamsForWritting(writer, serializationContext, entropy, nameof(entropy));
+            writer.WriteStartElement(serializationContext.TrustConstants.Prefix, WsTrustElements.Entropy, serializationContext.TrustConstants.Namespace);
+            if (entropy.BinarySecret != null)
+                WriteBinarySecret(writer, serializationContext, entropy.BinarySecret);
+
+            writer.WriteEndElement();
+        }
+
+        public void WriteLifetime(XmlDictionaryWriter writer, WsSerializationContext serializationContext, Lifetime lifetime)
+        {
+            //  <t:Lifetime>
+            //      <wsu:Created xmlns:wsu="...">2017-04-23T16:11:17.348Z</wsu:Created>
+            //      <wsu:Expires xmlns:wsu="...">2017-04-23T17:11:17.348Z</wsu:Expires>
+            //  </t:Lifetime>
+
+            WsUtils.ValidateParamsForWritting(writer, serializationContext, lifetime, nameof(lifetime));
+            writer.WriteStartElement(serializationContext.TrustConstants.Prefix, WsTrustElements.Lifetime, serializationContext.TrustConstants.Namespace);
+            if (lifetime.Created.HasValue)
+            {
+                writer.WriteStartElement(WsUtilityConstants.WsUtility10.Prefix, WsUtilityElements.Created, WsUtilityConstants.WsUtility10.Namespace);
+                writer.WriteString(XmlConvert.ToString(lifetime.Created.Value.ToUniversalTime(), GeneratedDateTimeFormat));
+                writer.WriteEndElement();
+            }
+
+            if (lifetime.Expires.HasValue)
+            {
+                writer.WriteStartElement(WsUtilityConstants.WsUtility10.Prefix, WsUtilityElements.Expires, WsUtilityConstants.WsUtility10.Namespace);
+                writer.WriteString(XmlConvert.ToString(lifetime.Expires.Value.ToUniversalTime(), GeneratedDateTimeFormat));
+                writer.WriteEndElement();
+            }
+
+            writer.WriteEndElement();
+        }
+
+        public void WriteOnBehalfOf(XmlDictionaryWriter writer, WsSerializationContext serializationContext, SecurityToken securityToken)
+        {
+            WsUtils.ValidateParamsForWritting(writer, serializationContext, securityToken, nameof(securityToken));
+            writer.WriteStartElement(serializationContext.TrustConstants.Prefix, WsTrustElements.OnBehalfOf, serializationContext.TrustConstants.Namespace);
+            foreach (var tokenHandler in SecurityTokenHandlers)
+            {
+                if (tokenHandler.CanWriteSecurityToken(securityToken))
+                {
+                    if (!tokenHandler.TryWriteSourceData(writer, securityToken))
+                        tokenHandler.WriteToken(writer, securityToken);
+                }
+            }
+
+            writer.WriteEndElement();
+        }
 
         public void WriteRequest(XmlDictionaryWriter writer, WsTrustVersion wsTrustVersion, WsTrustRequest trustRequest)
         {
@@ -790,7 +662,8 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
 
         public void WriteRequest(XmlDictionaryWriter writer, WsSerializationContext serializationContext, WsTrustRequest trustRequest)
         {
-            ValidateParamsForWritting(writer, serializationContext, trustRequest, nameof(trustRequest));
+            WsUtils.ValidateParamsForWritting(writer, serializationContext, trustRequest, nameof(trustRequest));
+
             writer.WriteStartElement(serializationContext.TrustConstants.Prefix, WsTrustElements.RequestSecurityToken, serializationContext.TrustConstants.Namespace);
             if (!string.IsNullOrEmpty(trustRequest.Context))
                 writer.WriteAttributeString(WsTrustAttributes.Context, trustRequest.Context);
@@ -826,19 +699,19 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
                 writer.WriteElementString(serializationContext.TrustConstants.Prefix, WsTrustElements.ComputedKeyAlgorithm, serializationContext.TrustConstants.Namespace, trustRequest.ComputedKeyAlgorithm);
 
             if (trustRequest.AppliesTo != null)
-                WriteAppliesTo(writer, serializationContext, trustRequest.AppliesTo);
+                _wsPolicySerializer.WriteAppliesTo(writer, serializationContext, trustRequest.AppliesTo);
 
             if (trustRequest.OnBehalfOf != null)
                 WriteOnBehalfOf(writer, serializationContext, trustRequest.OnBehalfOf);
 
             if (trustRequest.AdditionalContext != null)
-                WriteAdditionalContext(writer, serializationContext, trustRequest.AdditionalContext);
+                _wsFedSerializer.WriteAdditionalContext(writer, serializationContext, trustRequest.AdditionalContext);
 
             if (trustRequest.Claims != null)
                 WriteClaims(writer, serializationContext, trustRequest.Claims);
 
             if (trustRequest.PolicyReference != null)
-                WritePolicyReference(writer, serializationContext, trustRequest.PolicyReference);
+                _wsPolicySerializer.WritePolicyReference(writer, serializationContext, trustRequest.PolicyReference);
 
             if (trustRequest.UseKey != null)
                 WriteUseKey(writer, serializationContext, trustRequest.UseKey);
@@ -854,270 +727,84 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
         public void WriteResponse(XmlDictionaryWriter writer, WsSerializationContext serializationContext, WsTrustResponse trustResponse)
         {
             //brentsch - TODO account for trust version, only 1.3+ have collection
-            ValidateParamsForWritting(writer, serializationContext, trustResponse, nameof(trustResponse));
+
+            WsUtils.ValidateParamsForWritting(writer, serializationContext, trustResponse, nameof(trustResponse));
+
+            // <RequestSecurityTokenResponseCollection>
             writer.WriteStartElement(serializationContext.TrustConstants.Prefix, WsTrustElements.RequestSecurityTokenResponseCollection, serializationContext.TrustConstants.Namespace);
+
             foreach (var response in trustResponse.RequestSecurityTokenResponseCollection)
             {
+                // <RequestSecurityTokenResponse>
                 writer.WriteStartElement(serializationContext.TrustConstants.Prefix, WsTrustElements.RequestSecurityTokenResponse, serializationContext.TrustConstants.Namespace);
 
+                //  @Context="..."
                 if (!string.IsNullOrEmpty(response.Context))
                     writer.WriteAttributeString(WsTrustAttributes.Context, response.Context);
 
+                // <RequestedAttachedReference>
                 if (response.AttachedReference != null)
                     WriteAttachedReference(writer, serializationContext, response.AttachedReference);
 
+                // <RequestedUnattachedReference>
                 if (response.UnattachedReference != null)
                     WriteUnattachedReference(writer, serializationContext, response.UnattachedReference);
 
+                //  <Lifetime>
                 if (response.Lifetime != null)
                     WriteLifetime(writer, serializationContext, response.Lifetime);
 
+                //  <TokenType>
                 if (!string.IsNullOrEmpty(response.TokenType))
                     writer.WriteElementString(serializationContext.TrustConstants.Prefix, WsTrustElements.TokenType, serializationContext.TrustConstants.Namespace, response.TokenType);
 
+                //  <RequestedSecurityToken>
                 if (response.RequestedSecurityToken != null)
                     WriteRequestedSecurityToken(writer, serializationContext, response.RequestedSecurityToken);
 
+                // <KeyType>
                 if (!string.IsNullOrEmpty(response.KeyType))
                     writer.WriteElementString(serializationContext.TrustConstants.Prefix, WsTrustElements.KeyType, serializationContext.TrustConstants.Namespace, response.KeyType);
 
-                // AppliesTo
+                // <AppliesTo>
                 if (response.AppliesTo != null)
-                    WriteAppliesTo(writer, serializationContext, response.AppliesTo);
+                    _wsPolicySerializer.WriteAppliesTo(writer, serializationContext, response.AppliesTo);
 
-                // Entropy:
+                // <Entropy>
                 if (response.Entropy != null)
                     WriteEntropy(writer, serializationContext, response.Entropy);
 
-                // KeyType:
-                if (!string.IsNullOrEmpty(response.KeyType))
-                    writer.WriteElementString(serializationContext.TrustConstants.Prefix, WsTrustElements.KeyType, serializationContext.TrustConstants.Namespace, response.KeyType);
+                // <RequestedProofToken>
+                if (response.RequestedProofToken != null)
+                    WriteRequestedProofToken(writer, serializationContext, response.RequestedProofToken);
 
-                // </RequestSecurityTokenResponse>;
+                // </RequestSecurityTokenResponse>
                 writer.WriteEndElement();
             }
 
             // </RequestSecurityTokenResponseCollection>
             writer.WriteEndElement();
-
         }
 
-        public void WriteLifetime(XmlDictionaryWriter writer, WsSerializationContext serializationContext, Lifetime lifetime)
+        public void WriteRequestedProofToken(XmlDictionaryWriter writer, WsSerializationContext serializationContext, RequestedProofToken requestedProofToken)
         {
-            //  <t:Lifetime>
-            //      <wsu:Created xmlns:wsu="...">2017-04-23T16:11:17.348Z</wsu:Created>
-            //      <wsu:Expires xmlns:wsu="...">2017-04-23T17:11:17.348Z</wsu:Expires>
-            //  </t:Lifetime>
-
-            ValidateParamsForWritting(writer, serializationContext, lifetime, nameof(lifetime));
-            writer.WriteStartElement(serializationContext.TrustConstants.Prefix, WsTrustElements.Lifetime, serializationContext.TrustConstants.Namespace);
-            if (lifetime.Created.HasValue)
-            {
-                writer.WriteStartElement(WsUtilityConstants.WsUtility10.Prefix, WsUtilityElements.Created, WsUtilityConstants.WsUtility10.Namespace);
-                writer.WriteString(XmlConvert.ToString(lifetime.Created.Value.ToUniversalTime(), GeneratedDateTimeFormat));
-                writer.WriteEndElement();
-            }
-
-            if (lifetime.Expires.HasValue)
-            {
-                writer.WriteStartElement(WsUtilityConstants.WsUtility10.Prefix, WsUtilityElements.Expires, WsUtilityConstants.WsUtility10.Namespace);
-                writer.WriteString(XmlConvert.ToString(lifetime.Expires.Value.ToUniversalTime(), GeneratedDateTimeFormat));
-                writer.WriteEndElement();
-            }
-
-            writer.WriteEndElement();
-        }
-
-        public void WriteOnBehalfOf(XmlDictionaryWriter writer, WsSerializationContext serializationContext, SecurityToken securityToken)
-        {
-            ValidateParamsForWritting(writer, serializationContext, securityToken, nameof(securityToken));
-            writer.WriteStartElement(serializationContext.TrustConstants.Prefix, WsTrustElements.OnBehalfOf, serializationContext.TrustConstants.Namespace);
-            foreach (var tokenHandler in SecurityTokenHandlers)
-            {
-                if (tokenHandler.CanWriteSecurityToken(securityToken))
-                {
-                    if (!tokenHandler.TryWriteSourceData(writer, securityToken))
-                        tokenHandler.WriteToken(writer, securityToken);
-                }
-            }
-
-            writer.WriteEndElement();
-        }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="writer"></param>
-        /// <param name="serializationContext"></param>
-        /// <param name="additionalContext"></param>
-        public void WriteAdditionalContext(XmlDictionaryWriter writer, WsSerializationContext serializationContext, AdditionalContext additionalContext)
-        {
-            // brentsch - TODO consider WsFedSerializer
-
-            //  <auth:AdditionalContext>
-            //    <auth:ContextItem Name="xs:anyURI" Scope="xs:anyURI" ? ...>
-            //      (<auth:Value>xs:string</auth:Value> |
-            //       xs:any ) ?
-            //    </auth:ContextItem> *
-            //    ...
-            //  </auth:AdditionalContext>
-
-            ValidateParamsForWritting(writer, serializationContext, additionalContext, nameof(additionalContext));
-            writer.WriteStartElement(serializationContext.FedConstants.AuthPrefix, WsFedElements.AdditionalContext, serializationContext.FedConstants.AuthNamespace);
-            foreach (var contextItem in additionalContext.Items)
-            {
-                writer.WriteStartElement(serializationContext.FedConstants.AuthPrefix, WsFedElements.ContextItem, serializationContext.FedConstants.AuthNamespace);
-                writer.WriteAttributeString(WsFedAttributes.Name, contextItem.Name);
-                if (contextItem.Scope != null)
-                    writer.WriteAttributeString(WsFedAttributes.Scope, contextItem.Scope);
-
-                if (!string.IsNullOrEmpty(contextItem.Value))
-                    writer.WriteElementString(serializationContext.FedConstants.AuthPrefix, WsFedElements.Value, serializationContext.FedConstants.AuthNamespace, contextItem.Value);
-
-                writer.WriteEndElement();
-            }
-
-            writer.WriteEndElement();
-        }
-
-        public void WriteAppliesTo(XmlDictionaryWriter writer, WsSerializationContext serializationContext, AppliesTo appliesTo)
-        {
-            ValidateParamsForWritting(writer, serializationContext, appliesTo, nameof(appliesTo));
-            writer.WriteStartElement(serializationContext.PolicyConstants.Prefix, WsPolicyElements.AppliesTo, serializationContext.PolicyConstants.Namespace);
-            if (appliesTo.EndpointReference != null)
-                WriteEndpointReference(writer, serializationContext, appliesTo.EndpointReference);
-
-            writer.WriteEndElement();
-        }
-
-        public void WriteAttachedReference(XmlDictionaryWriter writer, WsSerializationContext serializationContext, SecurityTokenReference securityTokenReference)
-        {
-            //<t:RequestedAttachedReference>
-            //    <SecurityTokenReference d3p1:TokenType="http://docs.oasis-open.org/wss/oasis-wss-saml-token-profile-1.1#SAMLV2.0" xmlns:d3p1=""http://docs.oasis-open.org/wss/oasis-wss-wssecurity-secext-1.1.xsd"" xmlns=""http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd"">
-            //        <KeyIdentifier ValueType="http://docs.oasis-open.org/wss/oasis-wss-saml-token-profile-1.1#SAMLID">_edc15efd-1117-4bf9-89da-28b1663fb890</KeyIdentifier>
-            //    </SecurityTokenReference>
-            //</t:RequestedAttachedReference>
-
-            ValidateParamsForWritting(writer, serializationContext, securityTokenReference, nameof(securityTokenReference));
-            writer.WriteStartElement(serializationContext.TrustConstants.Prefix, WsTrustElements.RequestedAttachedReference, serializationContext.TrustConstants.Namespace);
-            _wsSecuritySerializer.WriteSecurityTokenReference(writer, serializationContext, securityTokenReference);
-            writer.WriteEndElement();
-        }
-
-        public void WriteUnattachedReference(XmlDictionaryWriter writer, WsSerializationContext serializationContext, SecurityTokenReference securityTokenReference)
-        {
-            //  <t:RequestedUnattachedReference>
-            //    <SecurityTokenReference d3p1:TokenType=""http://docs.oasis-open.org/wss/oasis-wss-saml-token-profile-1.1#SAMLV2.0"" xmlns:d3p1=""http://docs.oasis-open.org/wss/oasis-wss-wssecurity-secext-1.1.xsd"" xmlns=""http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd"">
-            //        <KeyIdentifier ValueType=""http://docs.oasis-open.org/wss/oasis-wss-saml-token-profile-1.1#SAMLID"">_edc15efd-1117-4bf9-89da-28b1663fb890</KeyIdentifier>
-            //    </SecurityTokenReference>
-            //  </t:RequestedUnattachedReference>
-
-            ValidateParamsForWritting(writer, serializationContext, securityTokenReference, nameof(securityTokenReference));
-            writer.WriteStartElement(serializationContext.TrustConstants.Prefix, WsTrustElements.RequestedUnattachedReference, serializationContext.TrustConstants.Namespace);
-            _wsSecuritySerializer.WriteSecurityTokenReference(writer, serializationContext, securityTokenReference);
-            writer.WriteEndElement();
-        }
-
-        public void WriteUseKey(XmlDictionaryWriter writer, WsSerializationContext serializationContext, UseKey useKey)
-        {
-            //<t:UseKey Sig="...">
-            // SecurityToken OR SecurityTokenReference
-            //</t:UseKey>
-
-            ValidateParamsForWritting(writer, serializationContext, useKey, nameof(useKey));
-            writer.WriteStartElement(serializationContext.TrustConstants.Prefix, WsTrustElements.UseKey, serializationContext.TrustConstants.Namespace);
-            if (!string.IsNullOrEmpty(useKey.SignatureId))
-                writer.WriteAttributeString(WsTrustAttributes.Sig, serializationContext.TrustConstants.Namespace, useKey.SignatureId);
-            
-            if (useKey.SecurityTokenReference != null)
-                _wsSecuritySerializer.WriteSecurityTokenReference(writer, serializationContext, useKey.SecurityTokenReference);
-
-            writer.WriteEndElement();
-        }
-
-        public void WriteClaims(XmlDictionaryWriter writer, WsSerializationContext serializationContext, Claims claims)
-        {
-            ValidateParamsForWritting(writer, serializationContext, claims, nameof(claims));
-            writer.WriteStartElement(serializationContext.TrustConstants.Prefix, WsTrustElements.Claims, serializationContext.TrustConstants.Namespace);
-            if (!string.IsNullOrEmpty(claims.Dialect))
-                writer.WriteAttributeString(WsTrustAttributes.Dialect, claims.Dialect);
-
-            foreach (var claim in claims.ClaimTypes)
-            {
-                writer.WriteStartElement(serializationContext.FedConstants.AuthPrefix, WsFedElements.ClaimType, serializationContext.FedConstants.AuthNamespace);
-                writer.WriteAttributeString(WsFedAttributes.Uri, claim.Uri);
-                if (claim.IsOptional.HasValue)
-                    writer.WriteAttributeString(WsFedAttributes.Optional, XmlConvert.ToString(claim.IsOptional.Value));
-
-                writer.WriteElementString(serializationContext.FedConstants.AuthPrefix, WsFedElements.Value, serializationContext.FedConstants.AuthNamespace, claim.Value);
-                writer.WriteEndElement();
-            }
-
-            writer.WriteEndElement();
-        }
-
-        public void WriteEndpointReference(XmlDictionaryWriter writer, WsSerializationContext serializationContext, EndpointReference endpointReference)
-        {
-            ValidateParamsForWritting(writer, serializationContext, endpointReference, nameof(endpointReference));
-            writer.WriteStartElement(serializationContext.AddressingConstants.Prefix, WsAddressingElements.EndpointReference, serializationContext.AddressingConstants.Namespace);
-            writer.WriteStartElement(serializationContext.AddressingConstants.Prefix, WsAddressingElements.Address, serializationContext.AddressingConstants.Namespace);
-            writer.WriteString(endpointReference.Uri.AbsoluteUri);
-            writer.WriteEndElement();
-            foreach (XmlElement element in endpointReference.AdditionalXmlElements)
-                element.WriteTo(writer);
-
-            writer.WriteEndElement();
-        }
-
-        public void WriteEntropy(XmlDictionaryWriter writer, WsSerializationContext serializationContext, Entropy entropy)
-        {
-            //  <wst:Entropy>
-            //      <wst:BinarySecret>
+            //  <t:RequestedProofToken>
+            //      <t:BinarySecret>
             //          ...
-            //      </wst:BinarySecret>
-            //  </wst:Entropy>
+            //      </t:BinarySecret>
+            //  </t:RequestedProofToken>
 
-            ValidateParamsForWritting(writer, serializationContext, entropy, nameof(entropy));
-            writer.WriteStartElement(serializationContext.TrustConstants.Prefix, WsTrustElements.Entropy, serializationContext.TrustConstants.Namespace);
-            if (entropy.BinarySecret != null)
-            {
-                writer.WriteStartElement(serializationContext.TrustConstants.Prefix, WsTrustElements.BinarySecret, serializationContext.TrustConstants.Namespace);
-                if (!string.IsNullOrEmpty(entropy.BinarySecret.Type))
-                    writer.WriteAttributeString(WsTrustAttributes.Type, entropy.BinarySecret.Type);
-
-                writer.WriteBase64(entropy.BinarySecret.Data, 0, entropy.BinarySecret.Data.Length);
-                writer.WriteEndElement();
-
-            }
-
-            writer.WriteEndElement();
-        }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="writer"></param>
-        /// <param name="serializationContext"></param>
-        /// <param name="policyReference"></param>
-        public void WritePolicyReference(XmlDictionaryWriter writer, WsSerializationContext serializationContext, PolicyReference policyReference)
-        {
-            ValidateParamsForWritting(writer, serializationContext, policyReference, nameof(policyReference));
-            writer.WriteStartElement(serializationContext.PolicyConstants.Prefix, WsPolicyElements.PolicyReference, serializationContext.PolicyConstants.Namespace);
-            if (!string.IsNullOrEmpty(policyReference.Uri))
-                writer.WriteAttributeString(WsPolicyAttributes.URI, policyReference.Uri);
-
-            if (!string.IsNullOrEmpty(policyReference.Digest))
-                writer.WriteAttributeString(WsPolicyAttributes.Digest, policyReference.Digest);
-
-            if (!string.IsNullOrEmpty(policyReference.DigestAlgorithm))
-                writer.WriteAttributeString(WsPolicyAttributes.DigestAlgorithm, policyReference.DigestAlgorithm);
+            WsUtils.ValidateParamsForWritting(writer, serializationContext, requestedProofToken, nameof(requestedProofToken));
+            writer.WriteStartElement(serializationContext.TrustConstants.Prefix, WsTrustElements.RequestedProofToken, serializationContext.TrustConstants.Namespace);
+            if (requestedProofToken.BinarySecret != null)
+                WriteBinarySecret(writer, serializationContext, requestedProofToken.BinarySecret);
 
             writer.WriteEndElement();
         }
 
         public void WriteRequestedSecurityToken(XmlDictionaryWriter writer, WsSerializationContext serializationContext, RequestedSecurityToken requestedSecurityToken)
         {
-            ValidateParamsForWritting(writer, serializationContext, requestedSecurityToken, nameof(requestedSecurityToken));
+            WsUtils.ValidateParamsForWritting(writer, serializationContext, requestedSecurityToken, nameof(requestedSecurityToken));
             writer.WriteStartElement(serializationContext.TrustConstants.Prefix, WsTrustElements.RequestedSecurityToken, serializationContext.TrustConstants.Namespace);
             foreach (var tokenHandler in SecurityTokenHandlers)
             {
@@ -1133,43 +820,35 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
             writer.WriteEndElement();
         }
 
-        /// <summary>
-        /// Checks standard items on a write call.
-        /// </summary>
-        /// <param name="writer">the <see cref="XmlWriter"/>to check.</param>
-        /// <param name="context">the expected element.</param>
-        /// <param name="obj"></param>
-        /// <param name="objName"></param>
-        internal static void ValidateParamsForWritting(XmlWriter writer, WsSerializationContext context, object obj, string objName)
+        public void WriteUnattachedReference(XmlDictionaryWriter writer, WsSerializationContext serializationContext, SecurityTokenReference securityTokenReference)
         {
-            if (writer == null)
-                throw LogHelper.LogArgumentNullException(nameof(writer));
+            //  <t:RequestedUnattachedReference>
+            //    <SecurityTokenReference d3p1:TokenType=""http://docs.oasis-open.org/wss/oasis-wss-saml-token-profile-1.1#SAMLV2.0"" xmlns:d3p1=""http://docs.oasis-open.org/wss/oasis-wss-wssecurity-secext-1.1.xsd"" xmlns=""http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd"">
+            //        <KeyIdentifier ValueType=""http://docs.oasis-open.org/wss/oasis-wss-saml-token-profile-1.1#SAMLID"">_edc15efd-1117-4bf9-89da-28b1663fb890</KeyIdentifier>
+            //    </SecurityTokenReference>
+            //  </t:RequestedUnattachedReference>
 
-            if (context == null)
-                throw LogHelper.LogArgumentNullException(nameof(context));
-
-            if (obj == null)
-                throw LogHelper.LogArgumentNullException(objName);
+            WsUtils.ValidateParamsForWritting(writer, serializationContext, securityTokenReference, nameof(securityTokenReference));
+            writer.WriteStartElement(serializationContext.TrustConstants.Prefix, WsTrustElements.RequestedUnattachedReference, serializationContext.TrustConstants.Namespace);
+            _wsSecuritySerializer.WriteSecurityTokenReference(writer, serializationContext, securityTokenReference);
+            writer.WriteEndElement();
         }
 
-        internal static Exception LogReadException(string format, params object[] args)
+        public void WriteUseKey(XmlDictionaryWriter writer, WsSerializationContext serializationContext, UseKey useKey)
         {
-            return LogHelper.LogExceptionMessage(new WsTrustReadException(LogHelper.FormatInvariant(format, args)));
-        }
+            //  <t:UseKey Sig="...">
+            //    SecurityToken OR SecurityTokenReference
+            //  </t:UseKey>
 
-        internal static Exception LogReadException(string format, Exception inner, params object[] args)
-        {
-            return LogHelper.LogExceptionMessage(new WsTrustReadException(LogHelper.FormatInvariant(format, args), inner));
-        }
+            WsUtils.ValidateParamsForWritting(writer, serializationContext, useKey, nameof(useKey));
+            writer.WriteStartElement(serializationContext.TrustConstants.Prefix, WsTrustElements.UseKey, serializationContext.TrustConstants.Namespace);
+            if (!string.IsNullOrEmpty(useKey.SignatureId))
+                writer.WriteAttributeString(WsTrustAttributes.Sig, useKey.SignatureId);
 
-        internal static Exception LogWriteException(string format, params object[] args)
-        {
-            return LogHelper.LogExceptionMessage(new WsTrustWriteException(LogHelper.FormatInvariant(format, args)));
-        }
+            if (useKey.SecurityTokenReference != null)
+                _wsSecuritySerializer.WriteSecurityTokenReference(writer, serializationContext, useKey.SecurityTokenReference);
 
-        internal static Exception LogWriteException(string format, Exception inner, params object[] args)
-        {
-            return LogHelper.LogExceptionMessage(new WsTrustWriteException(LogHelper.FormatInvariant(format, args), inner));
+            writer.WriteEndElement();
         }
     }
 }

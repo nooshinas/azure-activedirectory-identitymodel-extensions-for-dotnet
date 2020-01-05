@@ -33,6 +33,11 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
 {
     public class RequestedProofToken
     {
+        public RequestedProofToken()
+        {
+
+        }
+
         public RequestedProofToken(string computedKeyAlgorithm)
         {
             ComputedKeyAlgorithm =  (string.IsNullOrEmpty(computedKeyAlgorithm)) ? throw LogHelper.LogArgumentNullException(nameof(computedKeyAlgorithm)) : computedKeyAlgorithm;
@@ -40,12 +45,11 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
 
         public RequestedProofToken(BinarySecret binarySecret)
         {
-
             BinarySecret = binarySecret ?? throw LogHelper.LogArgumentNullException(nameof(binarySecret));
         }
 
-        public string ComputedKeyAlgorithm { get; }
+        public string ComputedKeyAlgorithm { get; set; }
 
-        public BinarySecret BinarySecret { get; }
+        public BinarySecret BinarySecret { get; set; }
     }
 }

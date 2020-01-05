@@ -34,6 +34,11 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
 {
     public class BinarySecret
     {
+        public BinarySecret()
+        {
+
+        }
+
         public BinarySecret(byte[] data)
         {
             Data = data;
@@ -48,11 +53,11 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
         /// <summary>
         /// Gets the Binary Data.
         /// </summary>
-        public byte[] Data { get; }
+        public byte[] Data { get; set; }
 
         /// <summary>
         /// Gets the Data Type.
         /// </summary>
-        public string Type { get; }
+        public string Type { get; set; }
     }
 }

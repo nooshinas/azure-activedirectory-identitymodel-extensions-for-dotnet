@@ -26,6 +26,7 @@
 //------------------------------------------------------------------------------
 
 using System.Xml;
+using Microsoft.IdentityModel.Xml;
 
 #pragma warning disable 1591
 
@@ -49,11 +50,12 @@ namespace Microsoft.IdentityModel.Protocols.WsSecurity
             //  ...
             //  </wsse:SecurityTokenReference>
 
+            var xmlAttributes = XmlAttributeHolder.ReadAttributes(reader);
             var securityTokenReference = new SecurityTokenReference
             {
-                Id = reader.GetAttribute(WsSecurityAttributes.Id),
-                TokenType = reader.GetAttribute(WsSecurityAttributes.TokenType),
-                Usage = reader.GetAttribute(WsSecurityAttributes.Usage)
+                Id = XmlAttributeHolder.GetAttribute(xmlAttributes, WsSecurityAttributes.Id, serializationContext.SecurityConstants.Namespace),
+                TokenType = XmlAttributeHolder.GetAttribute(xmlAttributes, WsSecurityAttributes.TokenType, serializationContext.SecurityConstants.Namespace),
+                Usage = XmlAttributeHolder.GetAttribute(xmlAttributes, WsSecurityAttributes.Usage, serializationContext.SecurityConstants.Namespace)
             };
 
             bool isEmptyElement = reader.IsEmptyElement;

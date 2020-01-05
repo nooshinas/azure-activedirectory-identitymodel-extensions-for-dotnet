@@ -110,16 +110,32 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust.Tests
             get
             {
                 var additionalContext = new AdditionalContext(
-                    new List<ContextItem> {
-                        new ContextItem(Default.Uri, Guid.NewGuid().ToString(), Guid.NewGuid().ToString()) });
-                var claims = new List<ClaimType> { new ClaimType { Uri = Guid.NewGuid().ToString(), IsOptional = true, Value = Guid.NewGuid().ToString() } };
-                var requestClaims = new Claims(Guid.NewGuid().ToString(), claims);
-                var tokenHandler = new Saml2SecurityTokenHandler();
+                    new List<ContextItem>
+                    {
+                        new ContextItem
+                        {
+                            Name = "http://schemas.microsoft.com/wlid/requestor",
+                            Scope = "http://schemas.xmlsoap.org/ws/2006/12/authorization/ctx/requestor",
+                            Value = "outlook.com"
+                        }
+                    });
+
+                var claimTypes = new List<ClaimType> {
+                    new ClaimType {
+                        Uri = "http://schemas.xmlsoap.org/ws/2006/12/authorization/claims/action",
+                        IsOptional = true,
+                        Value = "MSExchange.SharingCalendarFreeBusy"
+                    }
+                };
+
+                var claims = new Claims("http://schemas.xmlsoap.org/ws/2006/12/authorization/authclaims", claimTypes);
+
                 var tokenDescriptor = Default.SecurityTokenDescriptor(Default.AsymmetricSigningCredentials);
-                var saml2Token = tokenHandler.CreateToken(tokenDescriptor);
-                var token = tokenHandler.WriteToken(saml2Token);
-                var propertiesToIgnoreWhenComparing = new Dictionary<Type, List<string>> { { typeof(Saml2SecurityToken), new List<string> { "SigningKey" } } };
-                tokenHandler.ValidateToken(
+
+                var saml2TokenHandler = new Saml2SecurityTokenHandler();
+                var saml2Token = saml2TokenHandler.CreateToken(tokenDescriptor);
+                var token = saml2TokenHandler.WriteToken(saml2Token);
+                saml2TokenHandler.ValidateToken(
                     token, 
                     new TokenValidationParameters
                     {
@@ -127,11 +143,45 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust.Tests
                         ValidateIssuer = false,
                         IssuerSigningKey = Default.AsymmetricSigningCredentials.Key
                     },
-                    out SecurityToken securityToken);
+                    out SecurityToken saml2SecurityToken);
 
                 var trustConstants = WsTrust13Constants.Instance;
+                var propertiesToIgnoreWhenComparing = new Dictionary<Type, List<string>> { { typeof(Saml2SecurityToken), new List<string> { "SigningKey" } } };
+
                 return new TheoryData<WsTrustTheoryData>
                 {
+                    //<t:RequestSecurityToken Id="uuid-bdda680b-0921-4060-ac39-3429dc8ce7b5">
+                    //    <t:RequestType>http://schemas.xmlsoap.org/ws/2005/02/trust/Issue</t:RequestType>
+                    //    <t:TokenType>http://docs.oasis-open.org/wss/oasis-wss-saml-token-profile-1.1#SAMLV1.1</t:TokenType>
+                    //    <t:KeyType>http://schemas.xmlsoap.org/ws/2005/02/trust/SymmetricKey</t:KeyType>
+                    //    <t:KeySize>256</t:KeySize>
+                    //    <t:CanonicalizationAlgorithm>http://www.w3.org/2001/10/xml-exc-c14n#</t:CanonicalizationAlgorithm>
+                    //    <t:EncryptionAlgorithm>http://www.w3.org/2001/04/xmlenc#aes256-cbc</t:EncryptionAlgorithm>
+                    //    <t:EncryptWith>http://www.w3.org/2001/04/xmlenc#aes256-cbc</t:EncryptWith>
+                    //    <t:SignWith>http://www.w3.org/2000/09/xmldsig#hmac-sha1</t:SignWith>
+                    //    <t:ComputedKeyAlgorithm>http://schemas.xmlsoap.org/ws/2005/02/trust/CK/PSHA1</t:ComputedKeyAlgorithm>
+                    //    <wsp:AppliesTo>
+                    //        <a:EndpointReference>
+                    //            <a:Address>http://exchangecalendarsharing.com</a:Address>
+                    //        </a:EndpointReference>
+                    //    </wsp:AppliesTo>
+                    //    <t:OnBehalfOf>
+                    //        <saml:Assertion MajorVersion="1" MinorVersion="1" AssertionID="saml-9e1c03a5-7bfe-4945-838b-f784e285cdb9" Issuer="outlook.com" IssueInstant="2010-09-14T23:28:00.499Z" xmlns:saml="urn:oasis:names:tc:SAML:1.0:assertion">
+                    //        </saml:Assertion>
+                    //    </t:OnBehalfOf>
+                    //    <auth:AdditionalContext>
+                    //        <auth:ContextItem Scope="http://schemas.xmlsoap.org/ws/2006/12/authorization/ctx/requestor" Name="http://schemas.microsoft.com/wlid/requestor">
+                    //            <auth:Value>outlook.com</auth:Value>
+                    //        </auth:ContextItem>
+                    //    </auth:AdditionalContext>
+                    //    <t:Claims Dialect="http://schemas.xmlsoap.org/ws/2006/12/authorization/authclaims">
+                    //        <auth:ClaimType Uri="http://schemas.xmlsoap.org/ws/2006/12/authorization/claims/action">
+                    //            <auth:Value>MSExchange.SharingCalendarFreeBusy</auth:Value>
+                    //        </auth:ClaimType>
+                    //    </t:Claims>
+                    //    <wsp:PolicyReference URI="EX_MBI_FED_SSL"></wsp:PolicyReference>
+                    //</t:RequestSecurityToken>
+
                     new WsTrustTheoryData
                     {
                         First = true,
@@ -141,17 +191,22 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust.Tests
                             AdditionalContext = additionalContext,
                             AppliesTo = WsDefaults.AppliesTo,
                             CanonicalizationAlgorithm = SecurityAlgorithms.ExclusiveC14n,
-                            Claims = requestClaims,
+                            Claims = claims,
                             Context = Guid.NewGuid().ToString(),
                             ComputedKeyAlgorithm = trustConstants.WsTrustKeyTypes.PSHA1,
                             EncryptionAlgorithm = SecurityAlgorithms.Aes256Encryption,
                             EncryptWith = SecurityAlgorithms.Aes256Encryption,
                             KeySizeInBits = 256,
-                            KeyType = trustConstants.WsTrustKeyTypes.PublicKey,
-                            OnBehalfOf = securityToken,
-                            PolicyReference = new PolicyReference(Default.Uri, SecurityAlgorithms.Sha256Digest, Guid.NewGuid().ToString()),
+                            KeyType = trustConstants.WsTrustKeyTypes.Symmetric,
+                            OnBehalfOf = saml2SecurityToken,
+                            PolicyReference = new PolicyReference
+                            {
+                                Uri = "MSExchange.SharingCalendarFreeBusy",
+                                DigestAlgorithm = SecurityAlgorithms.Sha256Digest,
+                                Digest = Guid.NewGuid().ToString()
+                            },
                             RequestType = trustConstants.WsTrustActions.Issue,
-                            SignWith = SecurityAlgorithms.Sha256Digest,
+                            SignWith = SecurityAlgorithms.Aes128CbcHmacSha256,
                             TokenType = Saml2Constants.OasisWssSaml2TokenProfile11,
                             UseKey = new UseKey(WsDefaults.SecurityTokenReference){ SignatureId = Guid.NewGuid().ToString() }
                         },
@@ -219,9 +274,10 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust.Tests
                             AppliesTo = WsDefaults.AppliesTo,
                             AttachedReference = WsDefaults.SecurityTokenReference,
                             Entropy = new Entropy(new BinarySecret(Guid.NewGuid().ToByteArray(), WsSecurity11EncodingTypes.Instance.Base64)),
-                            KeyType = WsDefaults.KeyType,
-                            RequestedSecurityToken = new RequestedSecurityToken(signedSamlToken),
                             Lifetime = new Lifetime(DateTime.UtcNow, DateTime.UtcNow + TimeSpan.FromDays(1)),
+                            KeyType = WsDefaults.KeyType,
+                            RequestedProofToken = new RequestedProofToken(new BinarySecret(Guid.NewGuid().ToByteArray())),
+                            RequestedSecurityToken = new RequestedSecurityToken(signedSamlToken),
                             TokenType = Saml2Constants.OasisWssSaml2TokenProfile11,
                             UnattachedReference = WsDefaults.SecurityTokenReference
                         }),

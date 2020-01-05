@@ -1,4 +1,4 @@
-﻿//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 //
 // Copyright (c) Microsoft Corporation.
 // All rights reserved.
@@ -25,41 +25,34 @@
 //
 //------------------------------------------------------------------------------
 
-using System;
-using System.Collections.Generic;
+using System.Xml;
 using Microsoft.IdentityModel.Logging;
 
-namespace Microsoft.IdentityModel.Protocols.WsFed
+namespace Microsoft.IdentityModel.Protocols
 {
     /// <summary>
-    /// Defines the auth:AdditionalContext element.
+    /// Utilities for working with WS-* 
     /// </summary>
-    public class AdditionalContext
+    internal static class WsUtils
     {
-        /// <summary>
-        /// 
-        /// </summary>
-        public AdditionalContext()
-        {
-            Items = new List<ContextItem>();
-        }
 
         /// <summary>
-        /// Initializes an instance of <see cref="AdditionalContext"/>
+        /// Checks standard items on a write call.
         /// </summary>
-        /// <param name="items">Collection of <see cref="ContextItem"/>.</param>
-        /// <exception cref="ArgumentNullException"> <paramref name="items"/> is null.</exception>
-        public AdditionalContext(IList<ContextItem> items)
+        /// <param name="writer">the <see cref="XmlWriter"/>to check.</param>
+        /// <param name="context">the expected element.</param>
+        /// <param name="obj"></param>
+        /// <param name="objName"></param>
+        internal static void ValidateParamsForWritting(XmlWriter writer, WsSerializationContext context, object obj, string objName)
         {
-            Items = items ?? throw LogHelper.LogArgumentNullException(nameof(items));
-        }
+            if (writer == null)
+                throw LogHelper.LogArgumentNullException(nameof(writer));
 
-        /// <summary>
-        /// Gets the Collection of items.
-        /// </summary>
-        public IList<ContextItem> Items
-        {
-            get; set;
+            if (context == null)
+                throw LogHelper.LogArgumentNullException(nameof(context));
+
+            if (obj == null)
+                throw LogHelper.LogArgumentNullException(objName);
         }
     }
 }

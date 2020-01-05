@@ -150,6 +150,7 @@ namespace Microsoft.IdentityModel.TestUtils
                 { typeof(AdditionalContext).ToString(), CompareAllPublicProperties },
                 { typeof(AppliesTo).ToString(), CompareAllPublicProperties },
                 { typeof(AuthenticationProtocolMessage).ToString(), CompareAllPublicProperties },
+                { typeof(BinarySecret).ToString(), CompareBinarySecrect },
                 { typeof(Claims).ToString(), CompareAllPublicProperties },
                 { typeof(ClaimType).ToString(), CompareAllPublicProperties },
                 { typeof(EndpointReference).ToString(), CompareAllPublicProperties },
@@ -169,6 +170,7 @@ namespace Microsoft.IdentityModel.TestUtils
                 { typeof(JwtSecurityTokenHandler).ToString(), CompareAllPublicProperties },
                 { typeof(PolicyReference).ToString(), CompareAllPublicProperties },
                 { typeof(RequestedSecurityToken).ToString(), CompareAllPublicProperties },
+                { typeof(RequestedProofToken).ToString(), CompareAllPublicProperties },
                 { typeof(RequestSecurityTokenResponse).ToString(), CompareAllPublicProperties },
                 { typeof(Saml2SecurityTokenHandler).ToString(), CompareAllPublicProperties },
                 { typeof(SamlSecurityTokenHandler).ToString(), CompareAllPublicProperties },
@@ -202,6 +204,28 @@ namespace Microsoft.IdentityModel.TestUtils
 
             CompareAllPublicProperties(jwt1, jwt2, localContext);
             return context.Merge(localContext);
+        }
+
+        public static bool CompareBinarySecrect(object obj1, object obj2, CompareContext context)
+        {
+            var binarySecret1 = obj1 as BinarySecret;
+            var binarySecret2 = obj2 as BinarySecret;
+            var localContext = new CompareContext(context);
+
+            if (binarySecret1 == null && binarySecret2 == null)
+                return true;
+
+            if (binarySecret1 == null)
+                localContext.Diffs.Add("binarySecret1 == null");
+
+            if (binarySecret2 == null)
+                localContext.Diffs.Add("binarySecret2 == null");
+
+            AreStringsEqual(binarySecret1.Type, binarySecret2.Type, localContext);
+            AreBytesEqual(binarySecret1.Data, binarySecret2.Data, localContext);
+
+            context.Merge(localContext);
+            return localContext.Diffs.Count == 0;
         }
 
         public static bool CompareLifetime(object obj1, object obj2, CompareContext context)

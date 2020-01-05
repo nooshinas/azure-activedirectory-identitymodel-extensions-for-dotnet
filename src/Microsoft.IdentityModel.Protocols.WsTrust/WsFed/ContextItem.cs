@@ -41,6 +41,8 @@ namespace Microsoft.IdentityModel.Protocols.WsFed
         private string _scope;
         private string _value;
 
+        public ContextItem() { }
+
         // brentsch - TODO, it is contradictory to have setters that take null, but throw in constructors.
         public ContextItem(string name)
         {

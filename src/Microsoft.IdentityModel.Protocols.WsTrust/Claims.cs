@@ -38,14 +38,16 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
     /// </summary>
     public class Claims
     {
-        public Claims(string dialect, IEnumerable<ClaimType> claimTypes)
+        public Claims() { }
+
+        public Claims(string dialect, IList<ClaimType> claimTypes)
         {
             Dialect = dialect;
             ClaimTypes = claimTypes;
         }
 
-        public IEnumerable<ClaimType> ClaimTypes { get; }
+        public IList<ClaimType> ClaimTypes { get; } = new List<ClaimType>();
 
-        public string Dialect { get; }
+        public string Dialect { get; set;  }
     }
 }
