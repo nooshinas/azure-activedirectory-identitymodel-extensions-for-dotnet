@@ -25,33 +25,11 @@
 //
 //------------------------------------------------------------------------------
 
-using System.Xml;
-using Microsoft.IdentityModel.Logging;
+using System;
+using System.Runtime.InteropServices;
+using Xunit;
 
-namespace Microsoft.IdentityModel.Protocols
-{
-    /// <summary>
-    /// Utilities for working with WS-* 
-    /// </summary>
-    internal static class WsUtils
-    {
-        /// <summary>
-        /// Checks standard items on a write call.
-        /// </summary>
-        /// <param name="writer">the <see cref="XmlWriter"/>to check.</param>
-        /// <param name="context">the expected element.</param>
-        /// <param name="obj"></param>
-        /// <param name="objName"></param>
-        internal static void ValidateParamsForWritting(XmlWriter writer, WsSerializationContext context, object obj, string objName)
-        {
-            if (writer == null)
-                throw LogHelper.LogArgumentNullException(nameof(writer));
+[assembly: CLSCompliant(true)]
+[assembly: CollectionBehavior(CollectionBehavior.CollectionPerAssembly)]
+[assembly: ComVisible(false)]
 
-            if (context == null)
-                throw LogHelper.LogArgumentNullException(nameof(context));
-
-            if (obj == null)
-                throw LogHelper.LogArgumentNullException(objName);
-        }
-    }
-}

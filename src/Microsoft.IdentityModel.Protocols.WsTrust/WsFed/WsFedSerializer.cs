@@ -43,6 +43,7 @@ namespace Microsoft.IdentityModel.Protocols.WsFed
     {
         public WsFedSerializer()
         {
+            //  if this clas becomes public, we will need to check parameters on public methods
         }
 
         /// <summary>
@@ -58,51 +59,23 @@ namespace Microsoft.IdentityModel.Protocols.WsFed
             //    ...
             //  </auth:AdditionalContext>
 
-            XmlUtil.CheckReaderOnEntry(reader, WsFedElements.AdditionalContext);
             var additionalContext = new AdditionalContext();
-            if (reader.IsEmptyElement)
-                return additionalContext;
+            var isEmptyElement = reader.IsEmptyElement;
 
             // brentsch - TODO, this is an open spec, we are skipping all unknown attributes.
             reader.ReadStartElement();
-            reader.MoveToContent();
             try
             {
                 while (reader.IsStartElement())
                 {
-                    // brentsch - TODO, need to account for namespace
-                    if (!reader.IsEmptyElement && reader.IsStartElement(WsFedElements.ContextItem, @namespace))
+                    if (reader.IsStartElement(WsFedElements.ContextItem, @namespace))
                     {
-                        var name = reader.GetAttribute(WsFedAttributes.Name);
-                        if (string.IsNullOrEmpty(name))
-                            throw LogHelper.LogExceptionMessage(new XmlReadException(LogHelper.FormatInvariant(Xml.LogMessages.IDX30013, WsFedElements.ContextItem, WsFedAttributes.Name)));
-
-                        var contextItem = new ContextItem(name);
-                        contextItem.Scope = reader.GetAttribute(WsFedAttributes.Scope);
-                        reader.ReadStartElement();
-                        reader.MoveToContent();
-                        if (!reader.IsEmptyElement && reader.IsStartElement(WsFedElements.Value, @namespace))
-                        {
-                            reader.ReadStartElement();
-                            contextItem.Value = reader.ReadContentAsString();
-                            reader.MoveToContent();
-                            reader.ReadEndElement();
-                        }
-                        else
-                        {
-                            reader.Skip();
-                        }
-
-                        // </ContextItem>
-                        reader.ReadEndElement();
-                        additionalContext.Items.Add(contextItem);
+                        additionalContext.Items.Add(ReadContextItem(reader, @namespace));
                     }
                     else
                     {
                         reader.Skip();
                     }
-
-                    reader.MoveToContent();
                 }
             }
             catch (Exception ex)
@@ -111,8 +84,48 @@ namespace Microsoft.IdentityModel.Protocols.WsFed
             }
 
             // </AdditionalContext>
-            reader.ReadEndElement();
+            if (!isEmptyElement)
+                reader.ReadEndElement();
+
             return additionalContext;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        public virtual ContextItem ReadContextItem(XmlDictionaryReader reader, string @namespace)
+        {
+            //    <auth:ContextItem Name="xs:anyURI" Scope="xs:anyURI" ? ...>
+            //      (<auth:Value>xs:string</auth:Value> |
+            //       xs:any ) ?
+            //    </auth:ContextItem> *
+
+            var isEmptyElement = reader.IsEmptyElement;
+            var attributes = XmlAttributeHolder.ReadAttributes(reader);
+            var name = XmlAttributeHolder.GetAttribute(attributes, WsFedAttributes.Name, @namespace);
+            if (string.IsNullOrEmpty(name))
+                throw LogHelper.LogExceptionMessage(new XmlReadException(LogHelper.FormatInvariant(Xml.LogMessages.IDX30013, WsFedElements.ContextItem, WsFedAttributes.Name)));
+
+            var contextItem = new ContextItem(name)
+            {
+                Scope = XmlAttributeHolder.GetAttribute(attributes, WsFedAttributes.Scope, @namespace)
+            };
+
+            reader.ReadStartElement();
+            if (reader.IsStartElement(WsFedElements.Value, @namespace))
+            {
+                var value = XmlUtil.ReadStringElement(reader);
+                if (!string.IsNullOrEmpty(value))
+                    contextItem.Value = value;
+            }
+            else
+                reader.Skip();
+
+            // </ContextItem>
+            if (!isEmptyElement)
+                reader.ReadEndElement();
+
+            return contextItem;
         }
 
         /// <summary>
@@ -138,12 +151,12 @@ namespace Microsoft.IdentityModel.Protocols.WsFed
             //   </auth:Value>
             // </auth:ClaimType>
 
-            XmlUtil.CheckReaderOnEntry(reader, WsFedElements.ClaimType, @namespace);
-            var uri = reader.GetAttribute(WsFedAttributes.Uri);
+            var attributes = XmlAttributeHolder.ReadAttributes(reader);
+            var uri = XmlAttributeHolder.GetAttribute(attributes, WsFedAttributes.Uri, @namespace);
             if (string.IsNullOrEmpty(uri))
                 throw LogHelper.LogExceptionMessage(new XmlReadException(LogHelper.FormatInvariant(Xml.LogMessages.IDX30013, WsFedElements.ContextItem, WsFedAttributes.Name)));
 
-            var optionalAttribute = reader.GetAttribute(WsFedAttributes.Optional);
+            var optionalAttribute = XmlAttributeHolder.GetAttribute(attributes, WsFedAttributes.Optional, @namespace);
             bool? optional = null;
             if (!string.IsNullOrEmpty(optionalAttribute))
                 optional = XmlConvert.ToBoolean(optionalAttribute);

@@ -40,6 +40,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.IdentityModel.Tokens.Saml;
 using Microsoft.IdentityModel.Tokens.Saml2;
 using Microsoft.IdentityModel.Xml;
+using System.Xml;
 
 #if !CrossVersionTokenValidation
 using Microsoft.IdentityModel.JsonWebTokens;
@@ -80,6 +81,7 @@ namespace Microsoft.IdentityModel.TestUtils
                 { typeof(List<SamlCondition>).ToString(), AreSamlConditionEnumsEqual },
                 { typeof(List<SamlStatement>).ToString(), AreSamlStatementEnumsEqual },
                 { typeof(List<SecurityKey>).ToString(), AreSecurityKeyEnumsEqual },
+                { typeof(List<XmlElement>).ToString(), AreXmlEnumsEqual },
                 { typeof(List<Uri>).ToString(), AreUriEnumsEqual },
                 { typeof(byte[]).ToString(), AreBytesEqual },
                 { typeof(CanonicalizingTransfrom).ToString(), CompareAllPublicProperties },
@@ -330,6 +332,11 @@ namespace Microsoft.IdentityModel.TestUtils
         public static bool AreSecurityKeyEnumsEqual(object object1, object object2, CompareContext context)
         {
             return AreEnumsEqual<SecurityKey>(object1 as IEnumerable<SecurityKey>, object2 as IEnumerable<SecurityKey>, context, AreSecurityKeysEqual);
+        }
+
+        public static bool AreXmlEnumsEqual(object object1, object object2, CompareContext context)
+        {
+            return AreEnumsEqual<XmlElement>(object1 as IEnumerable<XmlElement>, object2 as IEnumerable<XmlElement>, context, AreXmlElementsEqual);
         }
 
         public static bool AreX509DataEnumsEqual(object object1, object object2, CompareContext context)
@@ -829,6 +836,24 @@ namespace Microsoft.IdentityModel.TestUtils
 
             context.Diffs.AddRange(localContext.Diffs);
             return localContext.Diffs.Count == 0;
+        }
+
+        public static bool AreXmlElementsEqual(XmlElement xmlElement1, XmlElement xmlElement2, CompareContext context)
+        {
+            var localContext = new CompareContext(context);
+            if (!ContinueCheckingEquality(xmlElement1, xmlElement2, context))
+                return context.Merge(localContext);
+
+            AreStringsEqual(xmlElement1.NamespaceURI, xmlElement2.NamespaceURI, localContext);
+            AreStringsEqual(xmlElement1.Name, xmlElement2.Name, localContext);
+            AreStringsEqual(xmlElement1.LocalName, xmlElement2.LocalName, localContext);
+            AreStringsEqual(xmlElement1.InnerXml, xmlElement2.InnerXml, localContext);
+            AreStringsEqual(xmlElement1.InnerText, xmlElement2.InnerText, localContext);
+            AreStringsEqual(xmlElement1.Prefix, xmlElement2.Prefix, localContext);
+            AreBoolsEqual(xmlElement1.IsEmpty, xmlElement2.IsEmpty, localContext);
+            AreBoolsEqual(xmlElement1.HasAttributes, xmlElement2.HasAttributes, localContext);
+
+            return context.Merge(localContext);
         }
 
         public static bool AreSecurityKeysEqual(SecurityKey securityKey1, SecurityKey securityKey2, CompareContext context)

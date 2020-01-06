@@ -78,7 +78,9 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
 
             XmlUtil.CheckReaderOnEntry(reader, WsTrustElements.Claims, serializationContext.TrustConstants.Namespace);
             bool isEmptyElement = reader.IsEmptyElement;
-            var dialect = reader.GetAttribute(WsTrustAttributes.Dialect);
+            var attributes = XmlAttributeHolder.ReadAttributes(reader);
+
+            var dialect = XmlAttributeHolder.GetAttribute(attributes, WsTrustAttributes.Dialect, serializationContext.TrustConstants.Namespace);
             reader.ReadStartElement();
             var claimTypes = new List<ClaimType>();
             while (reader.IsStartElement())
@@ -240,15 +242,9 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
             return trustRequest;
         }
 
-        public WsTrustRequest ReadRequest(XmlDictionaryReader reader, WsSerializationContext serializationContext, WsTrustRequest trustRequest)
+        internal WsTrustRequest ReadRequest(XmlDictionaryReader reader, WsSerializationContext serializationContext, WsTrustRequest trustRequest)
         {
             // brentsch - TODO, PERF - create a collection of strings assuming only single elements
-
-            if (reader == null)
-                throw LogHelper.LogArgumentNullException(nameof(reader));
-
-            if (serializationContext == null)
-                throw LogHelper.LogArgumentNullException(nameof(serializationContext));
 
             bool isEmptyElement = reader.IsEmptyElement;
             while (reader.IsStartElement())
@@ -311,7 +307,9 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
                     }
 
                     if (!processed)
-                        reader.Skip();
+                    {
+                        ReadUnknownElement(reader, trustRequest);
+                    }
                 }
                 else if (reader.IsLocalName(WsFedElements.AdditionalContext))
                 {
@@ -326,7 +324,9 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
                     }
 
                     if (!processed)
-                        reader.Skip();
+                    {
+                        ReadUnknownElement(reader, trustRequest);
+                    }
                 }
                 else if (reader.IsStartElement(WsTrustElements.Claims, serializationContext.TrustConstants.Namespace))
                 {
@@ -338,7 +338,7 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
                 }
                 else
                 {
-                    reader.Skip();
+                    ReadUnknownElement(reader, trustRequest);
                 }
             }
 
@@ -346,6 +346,13 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
                 reader.ReadEndElement();
 
             return trustRequest;
+        }
+
+        private void ReadUnknownElement(XmlDictionaryReader reader, WsTrustRequest trustRequest)
+        {
+            var doc = new XmlDocument();
+            doc.Load(reader.ReadSubtree());
+            trustRequest.AdditionalXmlElements.Add(doc.DocumentElement);
         }
 
         public RequestedProofToken ReadRequestedProofToken(XmlDictionaryReader reader, WsSerializationContext serializationContext)
@@ -715,6 +722,9 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
 
             if (trustRequest.UseKey != null)
                 WriteUseKey(writer, serializationContext, trustRequest.UseKey);
+
+            foreach (var xmlElement in trustRequest.AdditionalXmlElements)
+                xmlElement.WriteTo(writer);
 
             writer.WriteEndElement();
         }

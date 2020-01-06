@@ -51,8 +51,6 @@ namespace Microsoft.IdentityModel.Protocols.WsAddressing
         public virtual EndpointReference ReadEndpointReference(XmlDictionaryReader reader)
         {
             XmlUtil.CheckReaderOnEntry(reader, WsAddressingElements.EndpointReference);
-
-            reader.MoveToContent();
             foreach (var @namespace in WsAddressingConstants.KnownNamespaces)
             {
                 if (reader.IsNamespaceUri(@namespace))

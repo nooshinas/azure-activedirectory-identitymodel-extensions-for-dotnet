@@ -41,46 +41,15 @@ namespace Microsoft.IdentityModel.Xml
             Value = value;
         }
 
-        public string Prefix
-        {
-            get;
-        }
+        public string Prefix { get; }
 
-        public string NamespaceUri
-        {
-            get;
-        }
+        public string NamespaceUri { get; }
 
-        public string LocalName
-        {
-            get;
-        }
+        public string LocalName { get; }
 
-        public string Value
-        {
-            get;
-        }
-
-        public void WriteTo(XmlWriter writer)
-        {
-            writer.WriteStartAttribute(Prefix, LocalName, NamespaceUri);
-            writer.WriteString(Value);
-            writer.WriteEndAttribute();
-        }
-
-        public static void WriteAttributes(XmlAttributeHolder[] attributes, XmlWriter writer)
-        {
-            for (int i = 0; i < attributes.Length; i++)
-                attributes[i].WriteTo(writer);
-        }
+        public string Value { get; }
 
         public static XmlAttributeHolder[] ReadAttributes(XmlDictionaryReader reader)
-        {
-            int maxSizeOfHeaders = int.MaxValue;
-            return ReadAttributes(reader, ref maxSizeOfHeaders);
-        }
-
-        public static XmlAttributeHolder[] ReadAttributes(XmlDictionaryReader reader, ref int maxSizeOfHeaders)
         {
             if (reader.AttributeCount == 0)
                 return EmptyArray;
@@ -104,6 +73,7 @@ namespace Microsoft.IdentityModel.Xml
                 attributes[i] = new XmlAttributeHolder(prefix, localName, ns, value);
                 reader.MoveToNextAttribute();
             }
+
             reader.MoveToElement();
             return attributes;
         }
@@ -112,6 +82,7 @@ namespace Microsoft.IdentityModel.Xml
         {
             for (int i = 0; i < attributes.Length; i++)
             {
+                // if a prefix exist, then the namespace comes into play
                 if (!string.IsNullOrEmpty(attributes[i].Prefix))
                 {
                     if (attributes[i].LocalName == localName && attributes[i].NamespaceUri == ns)

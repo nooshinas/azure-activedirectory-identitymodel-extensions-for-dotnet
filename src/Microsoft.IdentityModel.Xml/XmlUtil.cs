@@ -27,6 +27,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 using System.Xml;
 using Microsoft.IdentityModel.Logging;
@@ -253,6 +254,39 @@ namespace Microsoft.IdentityModel.Xml
         }
 
         /// <summary>
+        /// Assumes the xmlreader is positioned on a startelement.
+        /// </summary>
+        /// <param name="reader"></param>
+        /// <returns></returns>
+        internal static XmlElement ReadAsXmlElement(XmlDictionaryReader reader)
+        {
+            XmlElement xmlElement = null;
+            using (MemoryStream ms = new MemoryStream())
+            {
+                using (XmlWriter writer = XmlDictionaryWriter.CreateTextWriter(ms, Encoding.UTF8, false))
+                {
+                    writer.WriteNode(reader, true);
+                    writer.Flush();
+                }
+
+                ms.Seek(0, SeekOrigin.Begin);
+                if (ms.Length == 0)
+                    return null;
+
+                var memoryReader = XmlDictionaryReader.CreateTextReader(ms, Encoding.UTF8, XmlDictionaryReaderQuotas.Max, null);
+                XmlDocument dom = new XmlDocument
+                {
+                    PreserveWhitespace = true
+                };
+
+                dom.Load(memoryReader);
+                xmlElement = dom.DocumentElement;
+            }
+
+            return xmlElement;
+        }
+
+        /// <summary>
         /// Determines if the prefix on a name maps to a namespace that is in scope the reader.
         /// </summary>
         /// <param name="reader">the <see cref="XmlReader"/> in scope.</param>
@@ -289,7 +323,10 @@ namespace Microsoft.IdentityModel.Xml
         public static string ReadStringElement(XmlDictionaryReader reader)
         {
             if (reader.IsEmptyElement)
+            {
+                reader.ReadStartElement();
                 return null;
+            }
 
             reader.ReadStartElement();
             var strVal = reader.ReadContentAsString();
@@ -307,7 +344,10 @@ namespace Microsoft.IdentityModel.Xml
         public static int? ReadIntElement(XmlDictionaryReader reader)
         {
             if (reader.IsEmptyElement)
+            {
+                reader.ReadStartElement();
                 return null;
+            }
 
             reader.ReadStartElement();
             var intVal = reader.ReadContentAsInt();

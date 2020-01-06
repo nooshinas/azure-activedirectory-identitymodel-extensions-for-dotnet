@@ -54,7 +54,8 @@ namespace Microsoft.IdentityModel.Protocols.WsPolicy
         /// <returns>An <see cref="EndpointReference"/> instance.</returns>
         public virtual AppliesTo ReadAppliesTo(XmlDictionaryReader reader, string @namespace)
         {
-            XmlUtil.CheckReaderOnEntry(reader, WsPolicyElements.AppliesTo, @namespace);
+            //  if this clas becomes public, we will need to check parameters
+            //  XmlUtil.CheckReaderOnEntry(reader, WsPolicyElements.AppliesTo, @namespace);
 
             // brentsch - TODO, TESTCASE
             if (reader.IsEmptyElement)
@@ -77,13 +78,14 @@ namespace Microsoft.IdentityModel.Protocols.WsPolicy
         /// <param name="namespace"></param>
         public virtual PolicyReference ReadPolicyReference(XmlDictionaryReader reader, string @namespace)
         {
-            // brentsch - TODO, if this was private, we wouldn't need to check as much
-            XmlUtil.CheckReaderOnEntry(reader, WsPolicyElements.PolicyReference, @namespace);
+            //  if this clas becomes public, we will need to check parameters
+            //  XmlUtil.CheckReaderOnEntry(reader, WsPolicyElements.PolicyReference, @namespace);
 
             bool isEmptyElement = reader.IsEmptyElement;
-            var uri = reader.GetAttribute(WsPolicyAttributes.URI);
-            var digest = reader.GetAttribute(WsPolicyAttributes.Digest);
-            var digestAlgorithm = reader.GetAttribute(WsPolicyAttributes.DigestAlgorithm);
+            var attributes = XmlAttributeHolder.ReadAttributes(reader);
+            var uri = XmlAttributeHolder.GetAttribute(attributes, WsPolicyAttributes.URI, @namespace);
+            var digest = XmlAttributeHolder.GetAttribute(attributes, WsPolicyAttributes.Digest, @namespace);
+            var digestAlgorithm = XmlAttributeHolder.GetAttribute(attributes, WsPolicyAttributes.DigestAlgorithm, @namespace);
             reader.ReadStartElement();
             reader.MoveToContent();
 
@@ -95,7 +97,9 @@ namespace Microsoft.IdentityModel.Protocols.WsPolicy
 
         public void WriteAppliesTo(XmlDictionaryWriter writer, WsSerializationContext serializationContext, AppliesTo appliesTo)
         {
-            WsUtils.ValidateParamsForWritting(writer, serializationContext, appliesTo, nameof(appliesTo));
+            //  if this clas becomes public, we will need to check parameters
+            //  WsUtils.ValidateParamsForWritting(writer, serializationContext, appliesTo, nameof(appliesTo));
+
             writer.WriteStartElement(serializationContext.PolicyConstants.Prefix, WsPolicyElements.AppliesTo, serializationContext.PolicyConstants.Namespace);
             if (appliesTo.EndpointReference != null)
                 _wsAddressingSerializer.WriteEndpointReference(writer, serializationContext, appliesTo.EndpointReference);
@@ -111,7 +115,9 @@ namespace Microsoft.IdentityModel.Protocols.WsPolicy
         /// <param name="policyReference"></param>
         public void WritePolicyReference(XmlDictionaryWriter writer, WsSerializationContext serializationContext, PolicyReference policyReference)
         {
-            WsUtils.ValidateParamsForWritting(writer, serializationContext, policyReference, nameof(policyReference));
+            //  if this clas becomes public, we will need to check parameters
+            //  WsUtils.ValidateParamsForWritting(writer, serializationContext, policyReference, nameof(policyReference));
+
             writer.WriteStartElement(serializationContext.PolicyConstants.Prefix, WsPolicyElements.PolicyReference, serializationContext.PolicyConstants.Namespace);
             if (!string.IsNullOrEmpty(policyReference.Uri))
                 writer.WriteAttributeString(WsPolicyAttributes.URI, policyReference.Uri);

@@ -32,13 +32,15 @@ using Microsoft.IdentityModel.Protocols.WsPolicy;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.IdentityModel.Xml;
 using System;
+using System.Collections.Generic;
+using System.Xml;
 
 namespace Microsoft.IdentityModel.Protocols.WsTrust
 {
     /// <summary>
     /// Contains all the possible elements of WsTrust RST / RSTR message
     /// </summary>
-    public class WsTrustMessage
+    public class WsTrustMessage : IXmlOpenItem
     {
         private AppliesTo _appliesTo;
         private string _authenticationType;
@@ -70,19 +72,15 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
         public AdditionalContext AdditionalContext { get; set; }
 
         /// <summary>
-        /// This optional element indicates that the requestor is making the request 
+        /// Gets or sets the optional element contains the actor.
         /// on to act as another.
         /// </summary>
         public string ActAs { get; set; }
 
-
         /// <summary>
         /// 
         /// </summary>
-        public bool AllowPostdating
-        {
-            get; set;
-        }
+        public bool AllowPostdating { get; set; }
 
         /// <summary>
         /// 
@@ -112,12 +110,10 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
             set => _binaryExchange = value ?? throw LogHelper.LogArgumentNullException(nameof(value));
         }
 
-
         /// <summary>
-        /// Gets or Sets the Token that is requested to be cancelled.
+        /// Gets or sets the <see cref="SecurityTokenElement"/> that is to be cancelled.
         /// </summary>
         public SecurityTokenElement CancelTarget { get; set; }
-
 
         /// <summary>
         /// Gets or sets the CanonicalizationAlgorithm.
@@ -214,11 +210,7 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
         /// <summary>
         /// Gets or sets the KeyType.
         /// </summary>
-        public string KeyType
-        {
-            get;
-            set;
-        }
+        public string KeyType { get; set; }
 
         /// <summary>
         /// Gets or sets wst:KeyWrapAlgorithm.
@@ -302,11 +294,6 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
         }
 
         /// <summary>
-        /// Gets or Sets the Security Token to be Validated.
-        /// </summary>
-        public SecurityTokenElement ValidateTarget { get; set; }
-
-        /// <summary>
         /// Gets or sets the TokenType.
         /// </summary>
         public string TokenType
@@ -328,5 +315,20 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
             get => _useKey;
             set => _useKey = value ?? throw LogHelper.LogArgumentNullException(nameof(value));
         }
+
+        /// <summary>
+        /// Gets or Sets the Security Token to be Validated.
+        /// </summary>
+        public SecurityTokenElement ValidateTarget { get; set; }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        public IList<XmlAttribute> AdditionalXmlAttributes { get; } = new List<XmlAttribute>();
+
+        /// <summary>
+        /// 
+        /// </summary>
+        public IList<XmlElement> AdditionalXmlElements { get; } = new List<XmlElement>();
     }
 }

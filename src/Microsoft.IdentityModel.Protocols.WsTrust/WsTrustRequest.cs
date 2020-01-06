@@ -27,6 +27,8 @@
 
 #pragma warning disable 1591
 
+using Microsoft.IdentityModel.Xml;
+
 namespace Microsoft.IdentityModel.Protocols.WsTrust
 {
     public class WsTrustRequest : WsTrustMessage
